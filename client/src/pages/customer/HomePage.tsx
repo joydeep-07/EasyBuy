@@ -1,345 +1,899 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
 import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
   Flame,
   TrendingUp,
-  Tag,
   ArrowRight,
+  ArrowUpRight,
   ShieldCheck,
-  Percent,
-} from 'lucide-react';
-import { ProductCard } from '../../components/common/ProductCard';
+  Truck,
+  RotateCcw,
+  Copy,
+  Check,
+  Ticket,
+  Mail,
+} from "lucide-react";
+import { toast } from "sonner";
+import { ProductCard } from "../../components/common/ProductCard";
 import {
   useGetProductsQuery,
   useGetPersonalizedRecommendationsQuery,
-} from '../../redux/api/productApi';
-import { useGetCategoriesQuery } from '../../redux/api/categoryApi';
-import { useGetActiveCouponsQuery } from '../../redux/api/couponApi';
+} from "../../redux/api/productApi";
+import { useGetCategoriesQuery } from "../../redux/api/categoryApi";
+import { useGetActiveCouponsQuery } from "../../redux/api/couponApi";
+
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 const HERO_SLIDES = [
   {
     id: 1,
-    title: 'Next-Gen Performance Devices',
-    subtitle: 'Up to 25% Off Premium Laptops & Smartphones with Instant Bank Discount',
-    badge: 'Exclusive Tech Fest',
-    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1600&auto=format&fit=crop&q=80',
-    link: '/category/electronics',
-    buttonText: 'Shop Electronics',
+    eyebrow: "Exclusive Tech Fest • 2026 Edition",
+    title: "Next Gen Performance Devices",
+    subtitle:
+      "Experience flagship laptops, studio audio, and pro smartphones with up to 25% instant bank privilege.",
+    image:
+      "https://i.pinimg.com/1200x/f4/10/5c/f4105c20d13d1951523117c24a129170.jpg",
+    link: "/category/electronics",
+    buttonText: "Explore Electronics",
+    secondaryLink: "/products?isBestSeller=true",
+    secondaryText: "View Flagships",
   },
   {
     id: 2,
-    title: 'The Autumn & Winter Fashion Edit',
-    subtitle: 'Explore curated streetwear, designer dresses & athletic sportswear',
-    badge: 'Trending Styles',
-    image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&auto=format&fit=crop&q=80',
-    link: '/category/fashion',
-    buttonText: 'Explore Fashion',
+    eyebrow: "Curated Seasonal Drop",
+    title: "The Autumn & Winter Fashion Edit",
+    subtitle:
+      "Architectural silhouettes, elevated streetwear, and performance outerwear crafted for everyday luxury.",
+    image:
+      "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1800&auto=format&fit=crop&q=85",
+    link: "/category/fashion",
+    buttonText: "Shop The Collection",
+    secondaryLink: "/products?isTrending=true",
+    secondaryText: "Trending Lookbook",
   },
   {
     id: 3,
-    title: 'Fuel Your Peak Performance',
-    subtitle: 'Authentic 100% Whey Proteins, BCAAs & Gym Gear at Unmatched Prices',
-    badge: 'Fitness Essentials',
-    image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1600&auto=format&fit=crop&q=80',
-    link: '/category/sports-fitness',
-    buttonText: 'Shop Nutrition',
+    eyebrow: "Lab-Tested Purity",
+    title: "Fuel Your Peak Performance",
+    subtitle:
+      "100% authentic isolates, recovery formulas, and precision training gear verified at the source.",
+    image:
+      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1800&auto=format&fit=crop&q=85",
+    link: "/category/sports-fitness",
+    buttonText: "Shop Nutrition & Gear",
+    secondaryLink: "/products",
+    secondaryText: "All Essentials",
   },
 ];
 
+const SLIDE_DURATION = 6; // seconds
+
+const ProductGridSkeleton = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+    {[...Array(4)].map((_, idx) => (
+      <div
+        key={idx}
+        className="rounded-2xl border border-black/[0.06] dark:border-white/[0.08] p-4 space-y-3 animate-pulse bg-black/[0.02] dark:bg-white/[0.02]"
+      >
+        <div className="w-full h-52 rounded-xl bg-black/[0.06] dark:bg-white/[0.06]" />
+        <div className="h-3 w-1/3 rounded bg-black/[0.06] dark:bg-white/[0.06]" />
+        <div className="h-4 w-3/4 rounded bg-black/[0.06] dark:bg-white/[0.06]" />
+        <div className="h-5 w-1/2 rounded bg-black/[0.06] dark:bg-white/[0.06]" />
+      </div>
+    ))}
+  </div>
+);
+
 export const HomePage: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
 
-  // RTK Queries for real backend data
-  const { data: categoriesData } = useGetCategoriesQuery();
-  const { data: bestSellersData } = useGetProductsQuery({ isBestSeller: 'true', limit: 8 });
-  const { data: trendingData } = useGetProductsQuery({ isTrending: 'true', limit: 8 });
-  const { data: recommendationsData } = useGetPersonalizedRecommendationsQuery({ limit: 8 });
+  // GSAP Scope & Element Refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sliderTrackRef = useRef<HTMLDivElement>(null);
+  const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const progressRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const couponBtnRef = useRef<HTMLButtonElement>(null);
+  const isFirstRender = useRef(true);
+
+  // RTK Queries
+  const { data: categoriesData, isLoading: loadingCategories } =
+    useGetCategoriesQuery();
+  const { data: bestSellersData, isLoading: loadingBestSellers } =
+    useGetProductsQuery({
+      isBestSeller: "true",
+      limit: 8,
+    });
+  const { data: trendingData, isLoading: loadingTrending } =
+    useGetProductsQuery({
+      isTrending: "true",
+      limit: 8,
+    });
+  const { data: recommendationsData } = useGetPersonalizedRecommendationsQuery({
+    limit: 8,
+  });
   const { data: couponsData } = useGetActiveCouponsQuery();
 
-  // Hero carousel auto-play
+  const featuredCoupon = couponsData?.coupons?.[0];
+
+  // Auto-advance hero carousel
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
-    }, 6000);
+    }, SLIDE_DURATION * 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [currentSlide]);
 
-  const slide = HERO_SLIDES[currentSlide];
+  // 1. HERO CAROUSEL & PROGRESS BAR ANIMATION
+  useGSAP(
+    () => {
+      const track = sliderTrackRef.current;
+      const activeSlide = slideRefs.current[currentSlide];
+
+      if (track) {
+        gsap.to(track, {
+          xPercent: -currentSlide * 100,
+          duration: isFirstRender.current ? 0 : 0.95,
+          ease: "expo.out",
+          overwrite: "auto",
+        });
+      }
+
+      // Reset non-active slide images slightly zoomed in for smooth settle
+      slideRefs.current.forEach((slide, idx) => {
+        if (!slide) return;
+        const img = slide.querySelector(".hero-bg-img");
+        if (img && idx !== currentSlide) {
+          gsap.to(img, {
+            scale: 1.08,
+            duration: 0.8,
+            ease: "power2.out",
+            overwrite: "auto",
+          });
+        }
+      });
+
+      // Staggered entrance on active slide
+      if (activeSlide) {
+        const img = activeSlide.querySelector(".hero-bg-img");
+        const contentItems = activeSlide.querySelectorAll(".hero-stagger");
+
+        if (img) {
+          gsap.fromTo(
+            img,
+            { scale: 1.08 },
+            {
+              scale: 1,
+              duration: 1.6,
+              ease: "power2.out",
+              overwrite: "auto",
+            },
+          );
+        }
+
+        if (contentItems.length) {
+          gsap.fromTo(
+            contentItems,
+            { y: 24, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.75,
+              stagger: 0.08,
+              delay: isFirstRender.current ? 0.1 : 0.22,
+              ease: "power2.out",
+              overwrite: "auto",
+            },
+          );
+        }
+      }
+
+      // GPU-accelerated 60fps progress bars
+      progressRefs.current.forEach((bar, idx) => {
+        if (!bar) return;
+        gsap.killTweensOf(bar);
+
+        if (idx === currentSlide) {
+          gsap.fromTo(
+            bar,
+            { scaleX: 0 },
+            {
+              scaleX: 1,
+              duration: SLIDE_DURATION,
+              ease: "none",
+            },
+          );
+        } else {
+          gsap.set(bar, { scaleX: idx < currentSlide ? 1 : 0 });
+        }
+      });
+
+      isFirstRender.current = false;
+    },
+    { dependencies: [currentSlide], scope: containerRef },
+  );
+
+  // 2. STATIC SCROLL SECTIONS (Trust Bar, Coupon Ticket, Newsletter)
+  useGSAP(
+    () => {
+      // Trust bar staggered reveal
+      gsap.from(".trust-item", {
+        y: 22,
+        opacity: 0,
+        duration: 0.7,
+        stagger: 0.1,
+        ease: "power3.out",
+        clearProps: "transform",
+        scrollTrigger: {
+          trigger: ".trust-bar",
+          start: "top 90%",
+          once: true,
+        },
+      });
+
+      // Coupon ticket reveal
+      if (featuredCoupon) {
+        gsap.from(".coupon-banner", {
+          y: 28,
+          opacity: 0,
+          scale: 0.985,
+          duration: 0.8,
+          ease: "power3.out",
+          clearProps: "transform",
+          scrollTrigger: {
+            trigger: ".coupon-banner",
+            start: "top 88%",
+            once: true,
+          },
+        });
+      }
+
+      // Newsletter spotlight reveal
+      gsap.from(".newsletter-box", {
+        y: 32,
+        opacity: 0,
+        duration: 0.85,
+        ease: "power3.out",
+        clearProps: "transform",
+        scrollTrigger: {
+          trigger: ".newsletter-box",
+          start: "top 88%",
+          once: true,
+        },
+      });
+    },
+    { dependencies: [Boolean(featuredCoupon)], scope: containerRef },
+  );
+
+  // 3. ASYNC DATA SECTIONS (Categories, Best Sellers, Trending, Recommendations)
+  useGSAP(
+    () => {
+      if (!loadingCategories && categoriesData?.categories?.length) {
+        gsap.from(".category-card", {
+          y: 24,
+          opacity: 0,
+          scale: 0.96,
+          duration: 0.65,
+          stagger: 0.045,
+          ease: "power3.out",
+          clearProps: "transform",
+          scrollTrigger: {
+            trigger: ".categories-grid",
+            start: "top 86%",
+            once: true,
+          },
+        });
+      }
+    },
+    {
+      dependencies: [loadingCategories, categoriesData?.categories?.length],
+      scope: containerRef,
+    },
+  );
+
+  useGSAP(
+    () => {
+      if (!loadingBestSellers && bestSellersData?.products?.length) {
+        gsap.from(".bestseller-item", {
+          y: 28,
+          opacity: 0,
+          duration: 0.65,
+          stagger: 0.06,
+          ease: "power3.out",
+          clearProps: "transform",
+          scrollTrigger: {
+            trigger: ".bestsellers-grid",
+            start: "top 86%",
+            once: true,
+          },
+        });
+      }
+    },
+    {
+      dependencies: [loadingBestSellers, bestSellersData?.products?.length],
+      scope: containerRef,
+    },
+  );
+
+  useGSAP(
+    () => {
+      if (!loadingTrending && trendingData?.products?.length) {
+        gsap.from(".trending-item", {
+          y: 28,
+          opacity: 0,
+          duration: 0.65,
+          stagger: 0.06,
+          ease: "power3.out",
+          clearProps: "transform",
+          scrollTrigger: {
+            trigger: ".trending-grid",
+            start: "top 86%",
+            once: true,
+          },
+        });
+      }
+    },
+    {
+      dependencies: [loadingTrending, trendingData?.products?.length],
+      scope: containerRef,
+    },
+  );
+
+  useGSAP(
+    () => {
+      if (recommendationsData?.recommendations?.length) {
+        gsap.from(".recommended-item", {
+          y: 28,
+          opacity: 0,
+          duration: 0.65,
+          stagger: 0.06,
+          ease: "power3.out",
+          clearProps: "transform",
+          scrollTrigger: {
+            trigger: ".recommended-grid",
+            start: "top 86%",
+            once: true,
+          },
+        });
+      }
+    },
+    {
+      dependencies: [recommendationsData?.recommendations?.length],
+      scope: containerRef,
+    },
+  );
+
+  const handleCopyCoupon = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    toast.success(`Coupon "${code}" copied to clipboard!`);
+
+    if (couponBtnRef.current) {
+      gsap.fromTo(
+        couponBtnRef.current,
+        { scale: 0.94 },
+        { scale: 1, duration: 0.45, ease: "elastic.out(1, 0.5)" },
+      );
+    }
+
+    setTimeout(() => setCopiedCode(null), 2500);
+  };
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+    toast.success(
+      "Welcome to EasyBuy Insider! Check your inbox for early access.",
+    );
+    setNewsletterEmail("");
+  };
 
   return (
-    <div className="w-full space-y-10 pb-16">
-      {/* 1. Full-Width Hero Carousel */}
-      <section className="relative w-full h-[380px] sm:h-[480px] lg:h-[540px] overflow-hidden bg-black">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={slide.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.7 }}
-            className="absolute inset-0"
-          >
-            <img
-              src={slide.image}
-              alt={slide.title}
-              className="w-full h-full object-cover opacity-70"
-            />
-            {/* Dark green gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
-          </motion.div>
-        </AnimatePresence>
+    <div
+      ref={containerRef}
+      className="w-full space-y-14 pb-24 overflow-x-hidden"
+    >
+      {/* 1. ATTACHED CONTINUOUS SLIDING HERO SHOWCASE */}
+      <section className="relative w-full h-[460px] sm:h-[540px] lg:h-[620px] overflow-hidden bg-zinc-950">
+        {/* Attached Horizontal Track */}
+        <div
+          ref={sliderTrackRef}
+          className="flex h-full w-full will-change-transform"
+        >
+          {HERO_SLIDES.map((item, idx) => (
+            <div
+              key={item.id}
+              ref={(el) => {
+                slideRefs.current[idx] = el;
+              }}
+              className="relative w-full h-full shrink-0 overflow-hidden"
+            >
+              {/* Slide Background Image */}
+              <img
+                src={item.image}
+                alt={item.title}
+                className="hero-bg-img absolute inset-0 w-full h-full object-cover object-center opacity-65 will-change-transform"
+              />
 
-        {/* Slide Content */}
-        <div className="relative z-10 h-full max-w-[1920px] mx-auto px-6 sm:px-12 flex flex-col justify-center max-w-2xl text-white">
-          <motion.div
-            key={`content-${slide.id}`}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="space-y-4"
-          >
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--accent-primary)] text-white shadow-md">
-              <Sparkles size={14} />
-              {slide.badge}
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-              {slide.title}
-            </h1>
-            <p className="text-sm sm:text-base text-gray-200 line-clamp-2 max-w-xl">
-              {slide.subtitle}
-            </p>
-            <div className="pt-2">
-              <Link
-                to={slide.link}
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[var(--accent-primary)] hover:bg-[var(--accent-secondary)] text-white font-bold text-sm shadow-lg shadow-emerald-950/40 transition-all hover:gap-3"
-              >
-                <span>{slide.buttonText}</span>
-                <ArrowRight size={16} />
-              </Link>
+              {/* Subtle Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/85 via-zinc-950/45 to-transparent" />
+
+              {/* Slide Foreground Content */}
+              <div className="relative z-10 h-full max-w-[1600px] mx-auto px-6 sm:px-12 flex flex-col justify-center">
+                <div className="max-w-2xl space-y-5">
+                  <div className="hero-stagger inline-flex items-center gap-2 text-xs font-medium text-zinc-200">
+                    <span className="tracking-wide">{item.eyebrow}</span>
+                  </div>
+
+                  <h1 className="hero-stagger text-4xl sm:text-5xl lg:text-6xl font-medium font-mono uppercase tracking-tight text-white leading-[1.08]">
+                    {item.title}
+                  </h1>
+
+                  <p className="hero-stagger text-sm sm:text-base lg:text-lg text-zinc-300 max-w-xl leading-relaxed font-normal">
+                    {item.subtitle}
+                  </p>
+
+                  <div className="hero-stagger pt-3 flex flex-wrap items-center gap-3.5">
+                    <Link
+                      to={item.link}
+                      className="group inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-white text-zinc-950 hover:bg-emerald-400 hover:text-zinc-950 font-semibold text-sm shadow-[0_10px_30px_rgba(0,0,0,0.3)] transition-colors duration-300"
+                    >
+                      <span>{item.buttonText}</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Link>
+
+                    <Link
+                      to={item.secondaryLink}
+                      className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white font-medium text-sm transition-colors duration-300"
+                    >
+                      <span>{item.secondaryText}</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
-          </motion.div>
+          ))}
         </div>
 
-        {/* Carousel Controls */}
-        <button
-          onClick={() => setCurrentSlide((prev) => (prev === 0 ? HERO_SLIDES.length - 1 : prev - 1))}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-white/20 hover:bg-white/40 text-white backdrop-blur-md transition-all"
-          aria-label="Previous slide"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <button
-          onClick={() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-white/20 hover:bg-white/40 text-white backdrop-blur-md transition-all"
-          aria-label="Next slide"
-        >
-          <ChevronRight size={20} />
-        </button>
+        {/* Bottom Glass Bar: Progress Indicators + Controls */}
+        <div className="absolute bottom-6 left-0 right-0 z-20 px-6 sm:px-12">
+          <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
+            {/* GPU-Accelerated Slide Progress Bars */}
+            <div className="flex items-center gap-2.5">
+              {HERO_SLIDES.map((s, idx) => (
+                <button
+                  key={s.id}
+                  onClick={() => setCurrentSlide(idx)}
+                  aria-label={`Go to slide ${idx + 1}`}
+                  className="group py-2 focus:outline-none cursor-pointer"
+                >
+                  <div className="h-1 w-10 sm:w-14 rounded-full bg-white/25 overflow-hidden">
+                    <div
+                      ref={(el) => {
+                        progressRefs.current[idx] = el;
+                      }}
+                      className={`h-full w-full origin-left rounded-full will-change-transform ${
+                        idx === currentSlide ? "bg-emerald-400" : "bg-white/60"
+                      }`}
+                    />
+                  </div>
+                </button>
+              ))}
+            </div>
 
-        {/* Dots */}
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-          {HERO_SLIDES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentSlide(i)}
-              className={`h-2 rounded-full transition-all ${
-                i === currentSlide ? 'w-8 bg-[var(--accent-primary)]' : 'w-2 bg-white/50'
-              }`}
-            />
-          ))}
+            {/* Minimal Prev/Next Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() =>
+                  setCurrentSlide((prev) =>
+                    prev === 0 ? HERO_SLIDES.length - 1 : prev - 1,
+                  )
+                }
+                aria-label="Previous slide"
+                className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white backdrop-blur-md transition-all duration-200 active:scale-90 cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() =>
+                  setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)
+                }
+                aria-label="Next slide"
+                className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white backdrop-blur-md transition-all duration-200 active:scale-90 cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* 2. Promotional Coupon Strip */}
-      {couponsData?.coupons && couponsData.coupons.length > 0 && (
-        <section className="px-4 sm:px-6">
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-white/20 backdrop-blur-md">
-                <Tag size={24} />
+      {/* 2. MINIMAL TRUST & PRIVILEGE BAR */}
+      <section className="max-w-[1600px] mx-auto px-4 sm:px-8 -mt-6">
+        <div className="trust-bar grid grid-cols-1 md:grid-cols-3 gap-4 p-4 sm:p-5 rounded-2xl bg-[var(--bg-primary)] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+          <div className="trust-item flex items-center gap-3.5 px-2">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-[var(--accent-primary)] flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[var(--text-main)]">
+                100% Verified Authentic
+              </h4>
+              <p className="text-[11px] text-[var(--text-secondary)]">
+                Direct brand-authorized inventory with warranty
+              </p>
+            </div>
+          </div>
+
+          <div className="trust-item flex items-center gap-3.5 px-2 md:border-x border-black/[0.06] dark:border-white/[0.08]">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-[var(--accent-primary)] flex items-center justify-center shrink-0">
+              <Truck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[var(--text-main)]">
+                Express Insured Dispatch
+              </h4>
+              <p className="text-[11px] text-[var(--text-secondary)]">
+                Complimentary priority shipping on orders over ₹499
+              </p>
+            </div>
+          </div>
+
+          <div className="trust-item flex items-center gap-3.5 px-2">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-[var(--accent-primary)] flex items-center justify-center shrink-0">
+              <RotateCcw className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[var(--text-main)]">
+                Effortless 7-Day Returns
+              </h4>
+              <p className="text-[11px] text-[var(--text-secondary)]">
+                Instant doorstep pickup & zero-hassle refunds
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. INTERACTIVE CLICK-TO-COPY COUPON TICKET */}
+      {featuredCoupon && (
+        <section className="coupon-banner max-w-[1600px] mx-auto px-4 sm:px-8">
+          <div
+            className="relative overflow-hidden rounded-md p-6 border border-[var(--border-light)]/50 sm:p-8 transition-all duration-300 shadow-sm"
+            style={{
+              backgroundColor: "var(--bg-primary)",
+              color: "var(--text-main)",
+             
+            }}
+          >
+            
+
+            <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+              {/* Left Side: Ticket Icon & Offer Copy */}
+              <div className="flex items-start sm:items-center gap-4 sm:gap-5">
+                
+
+                <div>
+                  <div className="inline-flex items-center gap-2 mb-1">
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"
+                      
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full animate-pulse"
+                        style={{ backgroundColor: "var(--accent-primary)" }}
+                      />
+                      Limited Privilege Pass
+                    </span>
+                  </div>
+
+                  <h3
+                    className="text-lg sm:text-4xl py-2 font-semibold tracking-tight"
+                    style={{ color: "var(--text-main)" }}
+                  >
+                    Unlock{" "}
+                    <span style={{ color: "var(--accent-primary)" }}>
+                      {featuredCoupon.discountType === "PERCENTAGE"
+                        ? `${featuredCoupon.discountValue}% Instant Savings`
+                        : `₹${featuredCoupon.discountValue} Off`}
+                    </span>{" "}
+                    on Your Order
+                  </h3>
+
+                  <p
+                    className="text-xs sm:text-sm mt-1 leading-relaxed"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Apply the voucher code at checkout to redeem your exclusive
+                    member discount.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-base sm:text-lg">Special Savings Unlocked!</h3>
-                <p className="text-xs sm:text-sm text-emerald-100">
-                  Use code <span className="font-mono font-bold bg-white/20 px-2 py-0.5 rounded">{couponsData.coupons[0].code}</span> for {couponsData.coupons[0].discountType === 'PERCENTAGE' ? `${couponsData.coupons[0].discountValue}%` : `₹${couponsData.coupons[0].discountValue}`} instant discount at checkout!
-                </p>
+
+              {/* Perforated Divider + Action Controls */}
+              <div
+                className="flex flex-wrap items-center gap-3 w-full lg:w-auto pt-4 lg:pt-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-dashed"
+                style={{
+                  borderColor:
+                    "color-mix(in srgb, var(--accent-primary) 28%, transparent)",
+                }}
+              >
+                {/* Click-to-Copy Code Pill */}
+                <button
+                  ref={couponBtnRef}
+                  onClick={() => handleCopyCoupon(featuredCoupon.code)}
+                  className="flex-1 sm:flex-initial flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-dashed transition-all duration-200 group cursor-pointer hover:brightness-105"
+                  style={{
+                    backgroundColor:
+                      "color-mix(in srgb, var(--accent-primary) 7%, transparent)",
+                    borderColor:
+                      "color-mix(in srgb, var(--accent-primary) 45%, transparent)",
+                  }}
+                >
+                  <span
+                    className="font-mono text-sm font-extrabold tracking-widest uppercase"
+                    style={{ color: "var(--accent-primary)" }}
+                  >
+                    {featuredCoupon.code}
+                  </span>
+
+                  {copiedCode === featuredCoupon.code ? (
+                    <span
+                      className="inline-flex items-center gap-1 text-[11px] font-bold"
+                      style={{ color: "var(--accent-primary)" }}
+                    >
+                      <Check className="w-3.5 h-3.5" /> Copied
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1 text-[11px] font-medium opacity-80 group-hover:opacity-100 transition-opacity"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      <Copy className="w-3.5 h-3.5" /> Copy
+                    </span>
+                  )}
+                </button>
+
+                {/* Primary CTA */}
+                <Link
+                  to="/products"
+                  className="inline-flex items-center justify-center gap-1.5 px-6 py-3 rounded-xl font-bold text-xs sm:text-sm text-zinc-950 shadow-sm hover:opacity-90 active:scale-[0.98] transition-all shrink-0"
+                  style={{
+                    backgroundColor: "var(--accent-primary)",
+                  }}
+                >
+                  <span>Shop Now</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
             </div>
-            <Link
-              to="/products"
-              className="px-5 py-2.5 rounded-xl bg-white text-emerald-900 font-bold text-xs hover:bg-emerald-50 transition-colors shadow-sm shrink-0"
-            >
-              Shop Qualifying Items
-            </Link>
           </div>
         </section>
       )}
 
-      {/* 3. Shop by Top Categories Grid */}
-      <section className="px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-5">
+      {/* 4. CURATED DEPARTMENTS */}
+      <section className="max-w-[1600px] mx-auto px-4 sm:px-8">
+        <div className="flex items-end justify-between mb-6">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)]">Shop by Category</h2>
-            <p className="text-xs text-[var(--text-secondary)]">Explore top departments curated with verified quality</p>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--accent-primary)]">
+              Departments
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)] mt-0.5">
+              Shop by Category
+            </h2>
           </div>
           <Link
             to="/products"
-            className="text-xs font-bold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
+            className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
           >
-            <span>See all</span>
-            <ArrowRight size={14} />
+            <span>All Collections</span>
+            <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
-          {categoriesData?.categories?.map((cat) => (
-            <Link
-              key={cat._id}
-              to={`/category/${cat.slug}`}
-              className="group flex flex-col items-center p-3 rounded-2xl theme-surface border theme-border hover:border-[var(--accent-primary)] hover:shadow-md transition-all text-center"
-            >
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[var(--bg-secondary)] mb-2 p-1">
-                <img
-                  src={cat.image || 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200'}
-                  alt={cat.name}
-                  className="w-full h-full object-cover rounded-lg group-hover:scale-110 transition-transform duration-300"
-                />
+        {loadingCategories ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="h-36 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] animate-pulse"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="categories-grid grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5">
+            {categoriesData?.categories?.map((cat) => (
+              <div key={cat._id} className="category-card">
+                <Link
+                  to={`/category/${cat.slug}`}
+                  className="group relative flex flex-col justify-end h-36 sm:h-40 rounded-2xl overflow-hidden bg-zinc-900 border border-black/[0.06] dark:border-white/[0.08] p-3.5 shadow-sm hover:shadow-lg transition-shadow duration-500"
+                >
+                  <img
+                    src={
+                      cat.image ||
+                      "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400"
+                    }
+                    alt={cat.name}
+                    className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-700 ease-out"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                  <div className="relative z-10 flex items-center justify-between gap-1">
+                    <span className="text-xs font-bold text-white tracking-tight line-clamp-1">
+                      {cat.name}
+                    </span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 shrink-0" />
+                  </div>
+                </Link>
               </div>
-              <span className="text-xs font-semibold text-[var(--text-main)] group-hover:text-[var(--accent-primary)] transition-colors line-clamp-1">
-                {cat.name}
-              </span>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* 4. Best Selling Products Row */}
-      <section className="px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
-              <Flame size={20} />
+      {/* 5. BEST SELLERS SHOWCASE */}
+      <section className="max-w-[1600px] mx-auto px-4 sm:px-8">
+        <div className="flex items-end justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <Flame className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)]">Best Sellers</h2>
-              <p className="text-xs text-[var(--text-secondary)]">Most popular products bought by thousands of customers</p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)]">
+                Best Sellers
+              </h2>
+              <p className="text-xs text-[var(--text-secondary)]">
+                Most coveted essentials rated highest by verified buyers
+              </p>
             </div>
           </div>
           <Link
             to="/products?isBestSeller=true"
-            className="text-xs font-bold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
+            className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-primary)] hover:opacity-80 transition-opacity"
           >
-            <span>View more</span>
-            <ArrowRight size={14} />
+            <span>Explore all</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-          {bestSellersData?.products?.map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
+        {loadingBestSellers ? (
+          <ProductGridSkeleton />
+        ) : (
+          <div className="bestsellers-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {bestSellersData?.products?.map((product) => (
+              <div key={product._id} className="bestseller-item">
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* 5. Trending Deals Row */}
-      <section className="px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-[var(--accent-primary)]">
-              <TrendingUp size={20} />
+      {/* 6. TRENDING DEALS & DROPS */}
+      <section className="max-w-[1600px] mx-auto px-4 sm:px-8">
+        <div className="flex items-end justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-[var(--accent-primary)] flex items-center justify-center">
+              <TrendingUp className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)]">Trending Offers & Deals</h2>
-              <p className="text-xs text-[var(--text-secondary)]">Handpicked price drops and limited time discounts</p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)]">
+                Trending Offers
+              </h2>
+              <p className="text-xs text-[var(--text-secondary)]">
+                Limited-time price drops and high-demand arrivals
+              </p>
             </div>
           </div>
           <Link
             to="/products?isTrending=true"
-            className="text-xs font-bold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
+            className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-primary)] hover:opacity-80 transition-opacity"
           >
             <span>View all deals</span>
-            <ArrowRight size={14} />
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-          {trendingData?.products?.map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
+        {loadingTrending ? (
+          <ProductGridSkeleton />
+        ) : (
+          <div className="trending-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {trendingData?.products?.map((product) => (
+              <div key={product._id} className="trending-item">
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* 6. Personalized Recommendations Section */}
-      {recommendationsData?.recommendations && recommendationsData.recommendations.length > 0 && (
-        <section className="px-4 sm:px-6">
-          <div className="p-6 sm:p-8 rounded-3xl theme-card border theme-border">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-xl bg-[var(--accent-primary)] text-white shadow-sm">
-                  <Sparkles size={20} />
+      {/* 7. PERSONALIZED RECOMMENDATIONS */}
+      {recommendationsData?.recommendations &&
+        recommendationsData.recommendations.length > 0 && (
+          <section className="max-w-[1600px] mx-auto px-4 sm:px-8">
+            <div className="p-6 sm:p-10 rounded-[2rem] bg-black/[0.025] dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.08]">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-sm">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent-primary)]">
+                      Tailored Selection
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)]">
+                      Curated For You
+                    </h2>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)]">
-                    Recommended For You
-                  </h2>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Based on your preferences, browsing trends, and past orders
-                  </p>
-                </div>
+                <Link
+                  to="/products"
+                  className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-main)] hover:text-[var(--accent-primary)] transition-colors"
+                >
+                  <span>Browse full catalogue</span>
+                  <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" />
+                </Link>
               </div>
-              <Link
-                to="/products"
-                className="text-xs font-bold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
-              >
-                <span>Explore catalogue</span>
-                <ArrowRight size={14} />
-              </Link>
+
+              <div className="recommended-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                {recommendationsData.recommendations
+                  .slice(0, 4)
+                  .map((product) => (
+                    <div key={product._id} className="recommended-item">
+                      <ProductCard product={product} />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+      {/* 8. PRIVATE CLUB NEWSLETTER SPOTLIGHT */}
+      <section className="newsletter-box max-w-[1600px] mx-auto px-4 sm:px-8">
+        <div className="relative overflow-hidden rounded-[2rem] bg-zinc-950 border border-white/10 p-8 sm:p-14 text-white">
+          <div className="pointer-events-none absolute -top-24 right-10 w-96 h-96 rounded-full bg-emerald-500/20 blur-[120px]" />
+          <div className="pointer-events-none absolute -bottom-24 left-10 w-72 h-72 rounded-full bg-teal-500/15 blur-[100px]" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div className="max-w-xl space-y-3 text-center lg:text-left">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                <Mail className="w-3 h-3" /> Private Access
+              </span>
+              <h3 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
+                First access to drops, private sales & member codes.
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                Join 50,000+ members receiving curated weekly releases and
+                secret checkout vouchers. Zero spam, unsubscribe anytime.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-              {recommendationsData.recommendations.slice(0, 4).map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 7. Newsletter Subscription Banner */}
-      <section className="px-4 sm:px-6">
-        <div className="p-8 sm:p-12 rounded-3xl theme-surface border theme-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="max-w-xl space-y-2 text-center md:text-left">
-            <h3 className="text-2xl sm:text-3xl font-black text-[var(--text-main)]">
-              Stay in the loop with EasyBuy Deals
-            </h3>
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)]">
-              Subscribe to get secret discount codes, flash sale alerts, and new product releases directly to your inbox.
-            </p>
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              alert('Thank you for subscribing to EasyBuy updates!');
-            }}
-            className="flex w-full md:w-auto max-w-md gap-2"
-          >
-            <input
-              type="email"
-              required
-              placeholder="Enter your email address..."
-              className="flex-1 px-4 py-3 rounded-xl border theme-border theme-card text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-xl bg-[var(--accent-primary)] hover:opacity-90 text-white font-bold text-xs sm:text-sm shrink-0 transition-opacity"
+            <form
+              onSubmit={handleNewsletterSubmit}
+              className="flex flex-col sm:flex-row w-full lg:w-auto max-w-md gap-2.5"
             >
-              Subscribe
-            </button>
-          </form>
+              <input
+                type="email"
+                required
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                placeholder="you@domain.com"
+                className="flex-1 sm:w-72 px-5 py-3.5 rounded-full bg-white/[0.08] border border-white/15 text-white placeholder-zinc-400 text-xs sm:text-sm focus:outline-none focus:border-emerald-400 transition-colors"
+              />
+              <button
+                type="submit"
+                className="px-7 py-3.5 rounded-full bg-white text-zinc-950 hover:bg-emerald-400 font-bold text-xs sm:text-sm shrink-0 transition-colors cursor-pointer"
+              >
+                Join Club
+              </button>
+            </form>
+          </div>
         </div>
       </section>
     </div>
