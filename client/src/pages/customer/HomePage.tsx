@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Draggable } from "gsap/Draggable";
 import { useGSAP } from "@gsap/react";
 import {
   ChevronLeft,
@@ -16,7 +17,6 @@ import {
   RotateCcw,
   Copy,
   Check,
-  Ticket,
   Mail,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ import {
 import { useGetCategoriesQuery } from "../../redux/api/categoryApi";
 import { useGetActiveCouponsQuery } from "../../redux/api/couponApi";
 
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+gsap.registerPlugin(ScrollTrigger, Draggable, useGSAP);
 
 const HERO_SLIDES = [
   {
@@ -94,6 +94,10 @@ export const HomePage: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [canScrollCat, setCanScrollCat] = useState({
+    left: false,
+    right: true,
+  });
 
   // GSAP Scope & Element Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -102,6 +106,12 @@ export const HomePage: React.FC = () => {
   const progressRefs = useRef<(HTMLDivElement | null)[]>([]);
   const couponBtnRef = useRef<HTMLButtonElement>(null);
   const isFirstRender = useRef(true);
+
+  // Category Draggable Refs
+  const catViewportRef = useRef<HTMLDivElement>(null);
+  const catTrackRef = useRef<HTMLDivElement>(null);
+  const catDraggableRef = useRef<Draggable[] | null>(null);
+  const isDraggingCatRef = useRef(false);
 
   // RTK Queries
   const { data: categoriesData, isLoading: loadingCategories } =
@@ -131,6 +141,48 @@ export const HomePage: React.FC = () => {
     return () => clearInterval(timer);
   }, [currentSlide]);
 
+  // Category Slider Helpers
+  const updateCatNavState = () => {
+    const viewport = catViewportRef.current;
+    const track = catTrackRef.current;
+    if (!viewport || !track) return;
+
+    const maxScroll = Math.min(0, viewport.offsetWidth - track.scrollWidth);
+    const currentX = (gsap.getProperty(track, "x") as number) || 0;
+
+    setCanScrollCat({
+      left: currentX < -4,
+      right: currentX > maxScroll + 4,
+    });
+  };
+
+  const slideCategories = (direction: "left" | "right") => {
+    const viewport = catViewportRef.current;
+    const track = catTrackRef.current;
+    if (!viewport || !track) return;
+
+    const maxScroll = Math.min(0, viewport.offsetWidth - track.scrollWidth);
+    const currentX = (gsap.getProperty(track, "x") as number) || 0;
+    const step = Math.max(260, viewport.offsetWidth * 0.65);
+
+    const targetX =
+      direction === "left"
+        ? Math.min(0, currentX + step)
+        : Math.max(maxScroll, currentX - step);
+
+    gsap.to(track, {
+      x: targetX,
+      duration: 0.75,
+      ease: "power3.out",
+      overwrite: "auto",
+      onUpdate: () => {
+        catDraggableRef.current?.[0]?.update();
+        updateCatNavState();
+      },
+      onComplete: updateCatNavState,
+    });
+  };
+
   // 1. HERO CAROUSEL & PROGRESS BAR ANIMATION
   useGSAP(
     () => {
@@ -146,7 +198,6 @@ export const HomePage: React.FC = () => {
         });
       }
 
-      // Reset non-active slide images slightly zoomed in for smooth settle
       slideRefs.current.forEach((slide, idx) => {
         if (!slide) return;
         const img = slide.querySelector(".hero-bg-img");
@@ -160,7 +211,6 @@ export const HomePage: React.FC = () => {
         }
       });
 
-      // Staggered entrance on active slide
       if (activeSlide) {
         const img = activeSlide.querySelector(".hero-bg-img");
         const contentItems = activeSlide.querySelectorAll(".hero-stagger");
@@ -195,7 +245,6 @@ export const HomePage: React.FC = () => {
         }
       }
 
-      // GPU-accelerated 60fps progress bars
       progressRefs.current.forEach((bar, idx) => {
         if (!bar) return;
         gsap.killTweensOf(bar);
@@ -223,7 +272,6 @@ export const HomePage: React.FC = () => {
   // 2. STATIC SCROLL SECTIONS (Trust Bar, Coupon Ticket, Newsletter)
   useGSAP(
     () => {
-      // Trust bar staggered reveal
       gsap.from(".trust-item", {
         y: 22,
         opacity: 0,
@@ -238,7 +286,6 @@ export const HomePage: React.FC = () => {
         },
       });
 
-      // Coupon ticket reveal
       if (featuredCoupon) {
         gsap.from(".coupon-banner", {
           y: 28,
@@ -255,7 +302,6 @@ export const HomePage: React.FC = () => {
         });
       }
 
-      // Newsletter spotlight reveal
       gsap.from(".newsletter-box", {
         y: 32,
         opacity: 0,
@@ -272,25 +318,90 @@ export const HomePage: React.FC = () => {
     { dependencies: [Boolean(featuredCoupon)], scope: containerRef },
   );
 
-  // 3. ASYNC DATA SECTIONS (Categories, Best Sellers, Trending, Recommendations)
+  // 3. CATEGORIES: ENTRANCE + GSAP DRAGGABLE SINGLE-LINE SLIDER
   useGSAP(
     () => {
-      if (!loadingCategories && categoriesData?.categories?.length) {
-        gsap.from(".category-card", {
-          y: 24,
-          opacity: 0,
-          scale: 0.96,
-          duration: 0.65,
-          stagger: 0.045,
-          ease: "power3.out",
-          clearProps: "transform",
-          scrollTrigger: {
-            trigger: ".categories-grid",
-            start: "top 86%",
-            once: true,
-          },
-        });
+      if (
+        loadingCategories ||
+        !categoriesData?.categories?.length ||
+        !catViewportRef.current ||
+        !catTrackRef.current
+      ) {
+        return;
       }
+
+      const viewport = catViewportRef.current;
+      const track = catTrackRef.current;
+
+      gsap.from(".category-card", {
+        y: 24,
+        opacity: 0,
+        scale: 0.94,
+        duration: 0.65,
+        stagger: 0.05,
+        ease: "power3.out",
+        clearProps: "transform",
+        scrollTrigger: {
+          trigger: viewport,
+          start: "top 88%",
+          once: true,
+        },
+      });
+
+      const getBounds = () => ({
+        minX: Math.min(0, viewport.offsetWidth - track.scrollWidth),
+        maxX: 0,
+      });
+
+      catDraggableRef.current = Draggable.create(track, {
+        type: "x",
+        bounds: getBounds(),
+        edgeResistance: 0.72,
+        dragClickables: true,
+        allowNativeTouchScrolling: false,
+        onDragStart() {
+          isDraggingCatRef.current = true;
+          gsap.killTweensOf(track);
+        },
+        onDrag() {
+          updateCatNavState();
+        },
+        onDragEnd() {
+          const { minX, maxX } = getBounds();
+          const currentX = (gsap.getProperty(track, "x") as number) || 0;
+          if (currentX < minX || currentX > maxX) {
+            gsap.to(track, {
+              x: Math.max(minX, Math.min(maxX, currentX)),
+              duration: 0.5,
+              ease: "power3.out",
+              onUpdate: updateCatNavState,
+            });
+          } else {
+            updateCatNavState();
+          }
+          setTimeout(() => {
+            isDraggingCatRef.current = false;
+          }, 60);
+        },
+      });
+
+      updateCatNavState();
+
+      const handleResize = () => {
+        const bounds = getBounds();
+        catDraggableRef.current?.[0]?.applyBounds(bounds);
+        const currentX = (gsap.getProperty(track, "x") as number) || 0;
+        if (currentX < bounds.minX) {
+          gsap.set(track, { x: bounds.minX });
+        }
+        updateCatNavState();
+      };
+
+      window.addEventListener("resize", handleResize);
+      return () => {
+        window.removeEventListener("resize", handleResize);
+        catDraggableRef.current?.[0]?.kill();
+      };
     },
     {
       dependencies: [loadingCategories, categoriesData?.categories?.length],
@@ -298,6 +409,7 @@ export const HomePage: React.FC = () => {
     },
   );
 
+  // 4. PRODUCT GRIDS SCROLL REVEALS
   useGSAP(
     () => {
       if (!loadingBestSellers && bestSellersData?.products?.length) {
@@ -421,9 +533,6 @@ export const HomePage: React.FC = () => {
                 alt={item.title}
                 className="hero-bg-img absolute inset-0 w-full h-full object-cover object-center opacity-65 will-change-transform"
               />
-
-              {/* Subtle Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/85 via-zinc-950/45 to-transparent" />
 
               {/* Slide Foreground Content */}
               <div className="relative z-10 h-full max-w-[1600px] mx-auto px-6 sm:px-12 flex flex-col justify-center">
@@ -570,22 +679,14 @@ export const HomePage: React.FC = () => {
             style={{
               backgroundColor: "var(--bg-primary)",
               color: "var(--text-main)",
-             
             }}
           >
-            
-
             <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-              {/* Left Side: Ticket Icon & Offer Copy */}
+              {/* Left Side: Offer Copy */}
               <div className="flex items-start sm:items-center gap-4 sm:gap-5">
-                
-
                 <div>
                   <div className="inline-flex items-center gap-2 mb-1">
-                    <span
-                      className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"
-                      
-                    >
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
                       <span
                         className="w-1.5 h-1.5 rounded-full animate-pulse"
                         style={{ backgroundColor: "var(--accent-primary)" }}
@@ -678,61 +779,173 @@ export const HomePage: React.FC = () => {
         </section>
       )}
 
-      {/* 4. CURATED DEPARTMENTS */}
+      {/* 4. CURATED DEPARTMENTS (SINGLE-LINE DRAGGABLE CIRCULAR SLIDER) */}
       <section className="max-w-[1600px] mx-auto px-4 sm:px-8">
-        <div className="flex items-end justify-between mb-6">
+        {/* Header + Circular Navigation Arrows */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--accent-primary)]">
-              Departments
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-main)] mt-0.5">
+            <div className="inline-flex items-center gap-2 mb-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: "var(--accent-primary)" }}
+              />
+              <span
+                className="text-[11px] font-bold uppercase tracking-[0.2em]"
+                style={{ color: "var(--accent-primary)" }}
+              >
+                Curated Departments
+              </span>
+            </div>
+            <h2
+              className="text-2xl sm:text-4xl font-semibold tracking-tight"
+              style={{ color: "var(--text-main)" }}
+            >
               Shop by Category
             </h2>
           </div>
-          <Link
-            to="/products"
-            className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
-          >
-            <span>All Collections</span>
-            <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" />
-          </Link>
+
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <Link
+              to="/products"
+              className="group inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300"
+              style={{
+                backgroundColor:
+                  "color-mix(in srgb, var(--accent-primary) 8%, transparent)",
+                color: "var(--text-main)",
+                border:
+                  "1px solid color-mix(in srgb, var(--accent-primary) 22%, transparent)",
+              }}
+            >
+              <span>All Collections</span>
+              <ArrowUpRight
+                className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                style={{ color: "var(--accent-primary)" }}
+              />
+            </Link>
+
+            {/* Circular Slider Arrows */}
+            {!loadingCategories &&
+              (categoriesData?.categories?.length ?? 0) > 0 && (
+                <div className="flex items-center gap-1.5 pl-1">
+                  <button
+                    type="button"
+                    onClick={() => slideCategories("left")}
+                    disabled={!canScrollCat.left}
+                    aria-label="Scroll categories left"
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+                    style={{
+                      backgroundColor: "var(--bg-primary)",
+                      color: "var(--text-main)",
+                      border:
+                        "1px solid color-mix(in srgb, var(--text-main) 12%, transparent)",
+                    }}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => slideCategories("right")}
+                    disabled={!canScrollCat.right}
+                    aria-label="Scroll categories right"
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+                    style={{
+                      backgroundColor: "var(--bg-primary)",
+                      color: "var(--text-main)",
+                      border:
+                        "1px solid color-mix(in srgb, var(--text-main) 12%, transparent)",
+                    }}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+          </div>
         </div>
 
+        {/* Single-Line Draggable Circular Track */}
         {loadingCategories ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="flex items-center gap-6 overflow-hidden py-2">
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
-                className="h-36 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] animate-pulse"
-              />
+                className="shrink-0 w-28 sm:w-36 flex flex-col items-center gap-3"
+              >
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-black/[0.05] dark:bg-white/[0.05] animate-pulse" />
+                <div className="h-3.5 w-20 rounded-full bg-black/[0.06] dark:bg-white/[0.06] animate-pulse" />
+              </div>
             ))}
           </div>
         ) : (
-          <div className="categories-grid grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5">
-            {categoriesData?.categories?.map((cat) => (
-              <div key={cat._id} className="category-card">
-                <Link
-                  to={`/category/${cat.slug}`}
-                  className="group relative flex flex-col justify-end h-36 sm:h-40 rounded-2xl overflow-hidden bg-zinc-900 border border-black/[0.06] dark:border-white/[0.08] p-3.5 shadow-sm hover:shadow-lg transition-shadow duration-500"
+          <div
+            ref={catViewportRef}
+            className="relative w-full overflow-hidden py-2 select-none"
+          >
+            <div
+              ref={catTrackRef}
+              className="flex items-start gap-5 sm:gap-7 w-max will-change-transform cursor-grab active:cursor-grabbing"
+            >
+              {categoriesData?.categories?.map((cat) => (
+                <div
+                  key={cat._id}
+                  className="category-card shrink-0 w-28 sm:w-36"
                 >
-                  <img
-                    src={
-                      cat.image ||
-                      "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400"
-                    }
-                    alt={cat.name}
-                    className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-700 ease-out"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-                  <div className="relative z-10 flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-white tracking-tight line-clamp-1">
+                  <Link
+                    to={`/category/${cat.slug}`}
+                    draggable={false}
+                    onClick={(e) => {
+                      if (isDraggingCatRef.current) {
+                        e.preventDefault();
+                      }
+                    }}
+                    className="group flex flex-col items-center text-center focus:outline-none"
+                  >
+                    {/* Circular Medallion Frame */}
+                    <div
+                      className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full p-1.5 transition-transform duration-500 ease-out group-hover:-translate-y-1.5"
+                      style={{
+                        background:
+                          "linear-gradient(145deg, color-mix(in srgb, var(--accent-primary) 35%, transparent), color-mix(in srgb, var(--text-main) 10%, transparent))",
+                      }}
+                    >
+                      {/* Hover Aura */}
+                      <div
+                        className="pointer-events-none absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"
+                        style={{
+                          backgroundColor:
+                            "color-mix(in srgb, var(--accent-primary) 28%, transparent)",
+                        }}
+                      />
+
+                      {/* Circular Photo */}
+                      <div
+                        className="relative w-full h-full rounded-full overflow-hidden shadow-sm"
+                        style={{ backgroundColor: "var(--bg-primary)" }}
+                      >
+                        <img
+                          src={
+                            cat.image ||
+                            "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400"
+                          }
+                          alt={cat.name}
+                          draggable={false}
+                          className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-black/10 dark:ring-white/15 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-60 group-hover:opacity-20 transition-opacity duration-500" />
+                      </div>
+                    </div>
+
+                    {/* Clean Category Name Below */}
+                    <span
+                      className="mt-3 text-xs sm:text-sm font-semibold tracking-tight line-clamp-1 px-1 transition-colors duration-300 group-hover:text-[var(--accent-primary)]"
+                      style={{ color: "var(--text-main)" }}
+                    >
                       {cat.name}
                     </span>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 shrink-0" />
-                  </div>
-                </Link>
-              </div>
-            ))}
+                  </Link>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>

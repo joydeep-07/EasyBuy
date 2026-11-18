@@ -166,18 +166,11 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header
-        className={`sticky top-0 z-40 w-full transition-all duration-300 ${
-          isScrolled
-            ? "shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]"
-            : ""
-        }`}
-      >
+      <header className="sticky top-0 z-40 w-full transition-all duration-300">
         {/* 1. Refined Editorial Top Bar */}
         <div className="w-full bg-zinc-950 text-zinc-300 text-[11px] tracking-wide py-1.5 px-4 sm:px-8 border-b border-white/10">
           <div className="max-w-[1600px] mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2.5 overflow-hidden whitespace-nowrap">
-             
               <span className="truncate text-zinc-300">
                 Complimentary Express Delivery above ₹499 - Code{" "}
                 <span className="text-white font-semibold tracking-wider">
@@ -207,7 +200,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* 2. Main Frosted Glass Navbar */}
-        <div className="w-full bg-[var(--bg-primary)]/85 backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--bg-primary)]/75 border-b border-black/[0.06] dark:border-white/[0.08] px-4 sm:px-8 py-3 transition-colors">
+        <div className="w-full bg-[var(--bg-main)] border-b border-[var(--border-light)] px-4 sm:px-8 py-3 transition-colors">
           <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4 lg:gap-8">
             {/* Left: Mobile Trigger, Brand Logo & Delivery Pill */}
             <div className="flex items-center gap-3 sm:gap-6 shrink-0">
@@ -221,7 +214,6 @@ export const Navbar: React.FC = () => {
 
               {/* Brand Mark */}
               <Link to="/" className="flex items-center gap-2.5 group">
-               
                 <div className="flex flex-col">
                   <span className="text-xl font-normal tracking-wide font-mono text-[var(--text-main)] leading-none">
                     Easy
@@ -388,8 +380,6 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <ThemeToggle />
 
-              
-
               {/* Wishlist */}
               <Link
                 to="/wishlist"
@@ -417,7 +407,9 @@ export const Navbar: React.FC = () => {
                     </span>
                   )}
                 </div>
-                {Boolean(cartData?.cart?.grandTotal && cartData.cart.grandTotal > 0) && (
+                {Boolean(
+                  cartData?.cart?.grandTotal && cartData.cart.grandTotal > 0,
+                ) && (
                   <>
                     <span className="hidden xl:block h-3.5 w-[1px] bg-white/25 dark:bg-black/20" />
                     <span className="hidden xl:block text-xs font-semibold tracking-tight">
@@ -552,8 +544,6 @@ export const Navbar: React.FC = () => {
             </div>
           </div>
         </div>
-
-       
       </header>
 
       {/* Mobile Slide-Over Drawer */}
