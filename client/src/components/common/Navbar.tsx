@@ -27,6 +27,7 @@ import { setUser, logoutSuccess } from "../../redux/slices/authSlice";
 import { ThemeToggle } from "./ThemeToggle";
 import { PincodeModal } from "./PincodeModal";
 import { toast } from "sonner";
+import AccountDropdown from "./AccountDropdown";
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -167,40 +168,29 @@ export const Navbar: React.FC = () => {
   return (
     <>
       <header className="sticky top-0 z-40 w-full transition-all duration-300">
-        {/* 1. Refined Editorial Top Bar */}
-        <div className="w-full bg-zinc-950 text-zinc-300 text-[11px] tracking-wide py-1.5 px-4 sm:px-8 border-b border-white/10">
+        {/* 1. Refined Apple-Style Announcement Bar */}
+        <div className="w-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-[12px] py-1.5 px-4 sm:px-8 border-b border-[var(--border-light)] transition-colors">
           <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2.5 overflow-hidden whitespace-nowrap">
-              <span className="truncate text-zinc-300">
-                Complimentary Express Delivery above ₹499 - Code{" "}
-                <span className="text-white font-semibold tracking-wider">
-                  WELCOME10
-                </span>{" "}
-                for 10% off
+            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
+              <span className="truncate">
+                Complimentary Express Delivery on orders above ₹499 • Use code <span className="font-semibold text-[var(--text-main)]">WELCOME10</span> for 10% off
               </span>
             </div>
 
-            <div className="hidden md:flex items-center gap-5 text-[11px] text-zinc-400">
+            <div className="hidden md:flex items-center gap-6 text-[12px]">
               <Link
                 to="/track-order/EB-202611-1001"
-                className="hover:text-white transition-colors flex items-center gap-1.5"
+                className="hover:text-[var(--text-main)] transition-colors flex items-center gap-1.5"
               >
-                <Package className="w-3.5 h-3.5" />
+                <Package className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
                 <span>Track Order</span>
               </Link>
-              {/* <span className="h-3 w-[1px] bg-white/15" />
-              <Link
-                to="/admin/login"
-                className="hover:text-emerald-400 transition-colors font-medium text-zinc-300"
-              >
-                Merchant Portal
-              </Link> */}
             </div>
           </div>
         </div>
 
         {/* 2. Main Frosted Glass Navbar */}
-        <div className="w-full bg-[var(--bg-main)] border-b border-[var(--border-light)] px-4 sm:px-8 py-3 transition-colors">
+        <div className="w-full apple-glass border-b border-[var(--border-light)] px-4 sm:px-8 py-3 transition-colors">
           <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4 lg:gap-8">
             {/* Left: Mobile Trigger, Brand Logo & Delivery Pill */}
             <div className="flex items-center gap-3 sm:gap-6 shrink-0">
@@ -212,28 +202,20 @@ export const Navbar: React.FC = () => {
                 <Menu className="w-5 h-5" />
               </button>
 
-              {/* Brand Mark */}
-              <Link to="/" className="flex items-center gap-2.5 group">
-                <div className="flex flex-col">
-                  <span className="text-xl font-normal tracking-wide font-mono text-[var(--text-main)] leading-none">
-                    Easy
-                    <span className="text-[var(--accent-primary)] font-normal">
-                      Buy
-                    </span>
-                  </span>
-                  <span className="text-[9px] font-medium tracking-[0.22em] uppercase text-[var(--text-secondary)] mt-1">
-                    Curated Store
-                  </span>
-                </div>
+              {/* Brand Mark - Minimal Apple Typography */}
+              <Link to="/" className="flex items-center gap-2 group">
+                <span className="text-xl font-bold tracking-tight text-[var(--text-main)]">
+                  Easy<span className="text-[var(--accent-primary)] font-semibold">Buy</span>
+                </span>
               </Link>
 
               {/* Subtle Vertical Divider */}
-              <div className="hidden xl:block h-6 w-[1px] bg-black/10 dark:bg-white/10" />
+              <div className="hidden xl:block h-5 w-[1px] bg-[var(--border-light)]" />
 
               {/* Minimal Delivery Location Pill */}
               <button
                 onClick={() => setIsPinModalOpen(true)}
-                className="hidden xl:flex items-center gap-2 py-1.5 px-3 rounded-full bg-black/[0.03] dark:bg-white/[0.04] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors text-left group"
+                className="hidden xl:flex items-center gap-2 py-1.5 px-3 rounded-full bg-black/[0.03] dark:bg-white/[0.04] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors text-left group border border-transparent hover:border-[var(--border-light)]"
               >
                 <MapPin className="w-3.5 h-3.5 text-[var(--accent-primary)] shrink-0 group-hover:scale-110 transition-transform" />
                 <div className="flex items-baseline gap-1.5">
@@ -247,14 +229,14 @@ export const Navbar: React.FC = () => {
               </button>
             </div>
 
-            {/* Center: Sleek Pill Search Bar */}
+            {/* Center: Sleek Apple Pill Search Bar */}
             <div ref={searchContainerRef} className="relative flex-1 max-w-2xl">
               <form
                 onSubmit={handleSearchSubmit}
-                className="group flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.06] border border-transparent focus-within:border-[var(--accent-primary)]/40 focus-within:bg-[var(--bg-primary)] focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all duration-200"
+                className="group flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.06] border border-transparent focus-within:border-[var(--accent-primary)]/50 focus-within:bg-[var(--bg-main)] focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200"
               >
                 {/* Department Selector */}
-                <div className="hidden md:flex items-center pl-4 pr-2 border-r border-black/10 dark:border-white/10">
+                <div className="hidden md:flex items-center pl-4 pr-2 border-r border-[var(--border-light)]">
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
@@ -384,25 +366,25 @@ export const Navbar: React.FC = () => {
               <Link
                 to="/wishlist"
                 title="Wishlist"
-                className="relative p-2.5 rounded-full hover:bg-black/[0.05] dark:hover:bg-white/[0.08] text-[var(--text-main)] transition-colors"
+                className="relative p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[var(--text-main)] transition-colors active:scale-95"
               >
-                <Heart className="w-[19px] h-[19px] stroke-[1.8]" />
+                <Heart className="w-[18px] h-[18px] stroke-[1.8]" />
                 {wishlistCount > 0 && (
-                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  <span className="absolute top-1 right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
                     {wishlistCount}
                   </span>
                 )}
               </Link>
 
-              {/* Cart Pill */}
+              {/* Apple Bag Pill */}
               <Link
                 to="/cart"
-                className="relative flex items-center gap-2.5 py-2 px-3.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 hover:opacity-90 transition-all shadow-sm group"
+                className="relative flex items-center gap-2 py-1.5 px-3 rounded-full bg-[var(--text-main)] text-[var(--bg-main)] hover:opacity-90 active:scale-95 transition-all text-xs font-medium shadow-sm group"
               >
                 <div className="relative flex items-center">
-                  <ShoppingBag className="w-4 h-4 stroke-[2.2] group-hover:scale-105 transition-transform" />
+                  <ShoppingBag className="w-4 h-4 stroke-[2] group-hover:scale-105 transition-transform" />
                   {cartCount > 0 && (
-                    <span className="ml-1.5 text-xs font-bold">
+                    <span className="ml-1.5 text-xs font-semibold">
                       {cartCount}
                     </span>
                   )}
@@ -411,136 +393,15 @@ export const Navbar: React.FC = () => {
                   cartData?.cart?.grandTotal && cartData.cart.grandTotal > 0,
                 ) && (
                   <>
-                    <span className="hidden xl:block h-3.5 w-[1px] bg-white/25 dark:bg-black/20" />
-                    <span className="hidden xl:block text-xs font-semibold tracking-tight">
+                    <span className="hidden xl:block h-3 w-[1px] opacity-30 bg-current" />
+                    <span className="hidden xl:block text-xs font-medium tracking-tight">
                       ₹{cartData?.cart?.grandTotal?.toLocaleString("en-IN")}
                     </span>
                   </>
                 )}
               </Link>
 
-              {/* Account Dropdown */}
-              <div ref={accountMenuRef} className="relative ml-1">
-                <button
-                  onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
-                  className="flex items-center gap-2 p-1 pr-2.5 rounded-full hover:bg-black/[0.05] dark:hover:bg-white/[0.08] transition-colors text-left"
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold shadow-inner">
-                    {isAuthenticated && authUser?.firstName ? (
-                      authUser.firstName.charAt(0).toUpperCase()
-                    ) : (
-                      <UserIcon className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="hidden lg:flex flex-col leading-none">
-                    <span className="text-[10px] text-[var(--text-secondary)]">
-                      {isAuthenticated
-                        ? `Hi, ${authUser?.firstName}`
-                        : "Welcome"}
-                    </span>
-                    <span className="text-xs font-semibold text-[var(--text-main)] flex items-center gap-0.5 mt-0.5">
-                      Account <ChevronDown className="w-3 h-3 opacity-70" />
-                    </span>
-                  </div>
-                </button>
-
-                {/* Refined Account Popover */}
-                {isAccountMenuOpen && (
-                  <div className="absolute right-0 mt-2.5 w-64 rounded-2xl bg-[var(--bg-primary)]/95 backdrop-blur-2xl border border-black/10 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-2 z-50">
-                    {isAuthenticated ? (
-                      <div>
-                        <div className="px-3 py-2.5 mb-1.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.05]">
-                          <p className="text-xs font-bold text-[var(--text-main)]">
-                            {authUser?.firstName} {authUser?.lastName}
-                          </p>
-                          <p className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">
-                            {authUser?.email}
-                          </p>
-                          {authUser?.role === "ADMIN" && (
-                            <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[var(--accent-primary)]/15 text-[var(--accent-primary)]">
-                              Administrator
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="space-y-0.5 text-xs">
-                          <Link
-                            to="/account"
-                            onClick={() => setIsAccountMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[var(--text-main)] transition-colors"
-                          >
-                            <UserIcon className="w-4 h-4 text-[var(--text-secondary)]" />
-                            Profile & Addresses
-                          </Link>
-                          <Link
-                            to="/orders"
-                            onClick={() => setIsAccountMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[var(--text-main)] transition-colors"
-                          >
-                            <Package className="w-4 h-4 text-[var(--text-secondary)]" />
-                            Orders & Tracking
-                          </Link>
-                          <Link
-                            to="/wishlist"
-                            onClick={() => setIsAccountMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[var(--text-main)] transition-colors"
-                          >
-                            <Heart className="w-4 h-4 text-[var(--text-secondary)]" />
-                            Saved Wishlist
-                          </Link>
-                          {authUser?.role === "ADMIN" && (
-                            <Link
-                              to="/admin/dashboard"
-                              onClick={() => setIsAccountMenuOpen(false)}
-                              className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] font-semibold transition-colors"
-                            >
-                              <Sparkles className="w-4 h-4" />
-                              Admin Dashboard
-                            </Link>
-                          )}
-                        </div>
-
-                        <div className="mt-1.5 pt-1.5 border-t border-black/5 dark:border-white/5">
-                          <button
-                            onClick={handleLogout}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 text-xs font-medium transition-colors"
-                          >
-                            <LogOut className="w-4 h-4" />
-                            Sign Out
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-3 text-center">
-                        <p className="text-xs font-medium text-[var(--text-main)] mb-1">
-                          Your EasyBuy Account
-                        </p>
-                        <p className="text-[11px] text-[var(--text-secondary)] mb-3.5 leading-relaxed">
-                          Access saved items, express checkout, and live order
-                          tracking.
-                        </p>
-                        <Link
-                          to="/login"
-                          onClick={() => setIsAccountMenuOpen(false)}
-                          className="block w-full py-2.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 text-xs font-semibold hover:opacity-90 transition-opacity mb-2.5"
-                        >
-                          Sign In
-                        </Link>
-                        <p className="text-[11px] text-[var(--text-secondary)]">
-                          New here?{" "}
-                          <Link
-                            to="/register"
-                            onClick={() => setIsAccountMenuOpen(false)}
-                            className="text-[var(--accent-primary)] font-semibold hover:underline"
-                          >
-                            Create an account
-                          </Link>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+             <AccountDropdown/>
             </div>
           </div>
         </div>

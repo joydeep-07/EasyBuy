@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import {
   SlidersHorizontal,
   X,
@@ -13,13 +13,26 @@ import { ProductCard } from '../../components/common/ProductCard';
 import { useGetProductsQuery } from '../../redux/api/productApi';
 import { useGetCategoriesQuery } from '../../redux/api/categoryApi';
 
-export const ProductsPage: React.FC = () => {
+interface ProductsPageProps {
+  categorySlug?: string;
+  hideHeaderBanner?: boolean;
+}
+
+export const ProductsPage: React.FC<ProductsPageProps> = ({
+  categorySlug: propSlug,
+  hideHeaderBanner = false,
+}) => {
+  const { slug: routeSlug } = useParams<{ slug?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  // Active category is either from prop, route params (/category/:slug), or search params (?category=...)
+  const activeCategory = propSlug || routeSlug || searchParams.get('category') || '';
+  const subcategory = searchParams.get('subcategory') || '';
 
   // Extract search params
   const keyword = searchParams.get('keyword') || '';
-  const category = searchParams.get('category') || '';
   const brand = searchParams.get('brand') || '';
   const minPrice = searchParams.get('minPrice') || '';
   const maxPrice = searchParams.get('maxPrice') || '';
@@ -37,7 +50,8 @@ export const ProductsPage: React.FC = () => {
   const { data: categoriesData } = useGetCategoriesQuery();
   const { data: productsData, isFetching } = useGetProductsQuery({
     keyword,
-    category,
+    category: activeCategory,
+    subcategory,
     brand,
     minPrice,
     maxPrice,
@@ -51,6 +65,15 @@ export const ProductsPage: React.FC = () => {
   });
 
   const updateParam = (key: string, value: string | null) => {
+    if (key === 'category') {
+      if (!value) {
+        navigate('/products');
+        return;
+      }
+      navigate(`/category/${value}`);
+      return;
+    }
+
     const newParams = new URLSearchParams(searchParams);
     if (value === null || value === '') {
       newParams.delete(key);
@@ -77,7 +100,11 @@ export const ProductsPage: React.FC = () => {
   const resetAllFilters = () => {
     setPriceMinInput('');
     setPriceMaxInput('');
-    setSearchParams(new URLSearchParams());
+    if (propSlug || routeSlug) {
+      navigate('/products');
+    } else {
+      setSearchParams(new URLSearchParams());
+    }
   };
 
   const selectedBrandsList = brand ? brand.split(',') : [];
@@ -114,7 +141,7 @@ export const ProductsPage: React.FC = () => {
           <li
             onClick={() => updateParam('category', null)}
             className={`cursor-pointer px-2 py-1 rounded-lg transition-colors ${
-              !category ? 'bg-[var(--accent-primary)] text-white font-bold' : 'hover:bg-[var(--bg-secondary)]'
+              !activeCategory ? 'bg-[var(--accent-primary)] text-white font-bold' : 'hover:bg-[var(--bg-secondary)]'
             }`}
           >
             All Departments
@@ -124,7 +151,7 @@ export const ProductsPage: React.FC = () => {
               key={cat._id}
               onClick={() => updateParam('category', cat.slug)}
               className={`cursor-pointer px-2 py-1 rounded-lg transition-colors truncate ${
-                category === cat.slug
+                activeCategory === cat.slug
                   ? 'bg-[var(--accent-primary)] text-white font-bold'
                   : 'hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
               }`}
@@ -231,9 +258,15 @@ export const ProductsPage: React.FC = () => {
       {/* Page Title & Search context */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b theme-border">
         <div>
-          <h1 className="text-2xl font-black text-[var(--text-main)]">
-            {keyword ? `Search results for "${keyword}"` : category ? `Category: ${category}` : 'Explore All Products'}
-          </h1>
+          {!hideHeaderBanner && (
+            <h1 className="text-2xl font-black text-[var(--text-main)]">
+              {keyword
+                ? `Search results for "${keyword}"`
+                : activeCategory
+                ? (categoriesData?.categories?.find((c) => c.slug === activeCategory)?.name || activeCategory)
+                : 'Explore All Products'}
+            </h1>
+          )}
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">
             {productsData ? `Showing ${productsData.products.length} of ${productsData.total} products` : 'Loading...'}
           </p>

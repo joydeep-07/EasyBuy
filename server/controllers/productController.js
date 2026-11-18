@@ -36,18 +36,31 @@ export const getProducts = async (req, res, next) => {
     // Category filter
     if (category) {
       // Find category by slug or id
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(category);
       const catObj = await Category.findOne({
-        $or: [{ slug: category }, { _id: category.match(/^[0-9a-fA-F]{24}$/) ? category : null }],
+        $or: [{ slug: category }, ...(isObjectId ? [{ _id: category }] : [])],
       });
       if (catObj) {
-        query.category = catObj._id;
+        if (catObj.parentCategory) {
+          // If category is a subcategory, match either subcategory or category
+          query.$or = [{ subcategory: catObj._id }, { category: catObj._id }];
+        } else {
+          // If category is a top-level parent, include products in it or any of its subcategories
+          const subcategories = await Category.find({ parentCategory: catObj._id }).select('_id');
+          const subcategoryIds = subcategories.map((sub) => sub._id);
+          query.$or = [
+            { category: catObj._id },
+            { subcategory: { $in: subcategoryIds } },
+          ];
+        }
       }
     }
 
     // Subcategory filter
     if (subcategory) {
+      const isSubObjectId = /^[0-9a-fA-F]{24}$/.test(subcategory);
       const subObj = await Category.findOne({
-        $or: [{ slug: subcategory }, { _id: subcategory.match(/^[0-9a-fA-F]{24}$/) ? subcategory : null }],
+        $or: [{ slug: subcategory }, ...(isSubObjectId ? [{ _id: subcategory }] : [])],
       });
       if (subObj) {
         query.subcategory = subObj._id;

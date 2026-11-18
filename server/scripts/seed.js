@@ -215,7 +215,7 @@ const seedDatabase = async () => {
       name: 'Electronics',
       slug: 'electronics',
       description: 'Laptops, Smartphones, Audio, Smartwatches and Accessories',
-      image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&auto=format&fit=crop&q=80',
+      image: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=600&auto=format&fit=crop&q=80',
       icon: 'Laptop',
       isFeatured: true,
       displayOrder: 1,
@@ -305,32 +305,56 @@ const seedDatabase = async () => {
     const subSmartphones = await Category.create({
       name: 'Smartphones',
       slug: 'smartphones',
+      description: 'Latest 5G flagship smartphones, folding phones & mobile devices',
+      image: 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=600&auto=format&fit=crop&q=80',
+      icon: 'Smartphone',
       parentCategory: catElectronics._id,
+      displayOrder: 10,
     });
     const subLaptops = await Category.create({
       name: 'Laptops',
       slug: 'laptops',
+      description: 'Ultra-thin notebooks, pro creator machines & gaming laptops',
+      image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80',
+      icon: 'Laptop',
       parentCategory: catElectronics._id,
+      displayOrder: 11,
     });
     const subAudio = await Category.create({
       name: 'Headphones & Audio',
       slug: 'headphones-audio',
+      description: 'Spatial audio headphones, wireless earbuds & studio monitors',
+      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80',
+      icon: 'Headphones',
       parentCategory: catElectronics._id,
+      displayOrder: 12,
     });
     const subMenFashion = await Category.create({
       name: "Men's Clothing",
       slug: 'mens-clothing',
+      description: 'Tailored shirts, casual tees, denim & modern jackets',
+      image: 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?w=600&auto=format&fit=crop&q=80',
+      icon: 'Shirt',
       parentCategory: catFashion._id,
+      displayOrder: 13,
     });
     const subWomenFashion = await Category.create({
       name: "Women's Clothing",
       slug: 'womens-clothing',
+      description: 'Dresses, designer tops, knitwear & seasonal collections',
+      image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&auto=format&fit=crop&q=80',
+      icon: 'ShoppingBag',
       parentCategory: catFashion._id,
+      displayOrder: 14,
     });
     const subSupplements = await Category.create({
       name: 'Supplements & Protein',
       slug: 'supplements-protein',
+      description: 'Whey protein isolates, workout energy & daily multivitamins',
+      image: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=600&auto=format&fit=crop&q=80',
+      icon: 'Activity',
       parentCategory: catSports._id,
+      displayOrder: 15,
     });
 
     // 6. Create Dynamic Attribute Definitions

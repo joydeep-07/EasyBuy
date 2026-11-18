@@ -48,13 +48,13 @@ export const PincodeModal: React.FC<PincodeModalProps> = ({ isOpen, onClose }) =
           </button>
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-[var(--accent-primary)]">
-              <MapPin size={24} />
+            <div className="p-2.5 rounded-2xl bg-[var(--accent-surface)] text-[var(--accent-primary)]">
+              <MapPin size={22} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-[var(--text-main)]">Choose your delivery location</h3>
+              <h3 className="text-base font-semibold text-[var(--text-main)] tracking-tight">Choose your delivery location</h3>
               <p className="text-xs text-[var(--text-secondary)]">
-                Delivery options and speeds may vary based on your location
+                Delivery options and speeds are verified for your area
               </p>
             </div>
           </div>
@@ -71,12 +71,12 @@ export const PincodeModal: React.FC<PincodeModalProps> = ({ isOpen, onClose }) =
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
                   placeholder="e.g. 713301"
-                  className="flex-1 px-4 py-2.5 rounded-xl border theme-border theme-surface text-[var(--text-main)] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  className="flex-1 px-4 py-2.5 rounded-full border theme-border bg-[var(--bg-secondary)] text-[var(--text-main)] font-mono text-sm focus:outline-none focus:border-[var(--accent-primary)] transition-all"
                 />
                 <button
                   type="submit"
                   disabled={pinInput.length !== 6 || isFetching}
-                  className="px-5 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white font-medium text-sm hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                  className="px-6 py-2.5 rounded-full bg-[var(--accent-primary)] text-white font-medium text-sm hover:brightness-105 active:scale-95 disabled:opacity-40 transition-all flex items-center gap-1.5"
                 >
                   {isFetching ? 'Checking...' : 'Apply'}
                 </button>
@@ -84,34 +84,34 @@ export const PincodeModal: React.FC<PincodeModalProps> = ({ isOpen, onClose }) =
             </div>
 
             {/* Quick Demo PIN Shortcuts */}
-            <div className="pt-2">
-              <p className="text-xs text-[var(--text-secondary)] mb-2 font-medium">Try Demo Locations:</p>
+            <div className="pt-1">
+              <p className="text-[11px] font-medium text-[var(--text-secondary)] mb-2">Try Demo Locations:</p>
               <div className="flex flex-wrap gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => setPinInput('713301')}
-                  className="px-2.5 py-1 rounded-lg border theme-border hover:bg-emerald-500/10 text-[var(--accent-primary)]"
+                  className="px-3 py-1 rounded-full border theme-border hover:bg-[var(--accent-surface)] text-[var(--accent-primary)] font-medium transition-colors"
                 >
                   713301 (Deliverable)
                 </button>
                 <button
                   type="button"
                   onClick={() => setPinInput('713302')}
-                  className="px-2.5 py-1 rounded-lg border theme-border hover:bg-red-500/10 text-red-500"
+                  className="px-3 py-1 rounded-full border theme-border hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-secondary)] transition-colors"
                 >
                   713302 (Unavailable)
                 </button>
                 <button
                   type="button"
                   onClick={() => setPinInput('713303')}
-                  className="px-2.5 py-1 rounded-lg border theme-border hover:bg-amber-500/10 text-amber-500"
+                  className="px-3 py-1 rounded-full border theme-border hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-secondary)] transition-colors"
                 >
                   713303 (Restricted)
                 </button>
                 <button
                   type="button"
                   onClick={() => setPinInput('700001')}
-                  className="px-2.5 py-1 rounded-lg border theme-border hover:bg-blue-500/10 text-blue-500"
+                  className="px-3 py-1 rounded-full border theme-border hover:bg-[var(--accent-surface)] text-[var(--accent-primary)] font-medium transition-colors"
                 >
                   700001 (Kolkata)
                 </button>
@@ -121,10 +121,10 @@ export const PincodeModal: React.FC<PincodeModalProps> = ({ isOpen, onClose }) =
             {/* Status Feedback */}
             {data?.data && (
               <div
-                className={`p-3 rounded-xl text-xs flex items-start gap-2.5 ${
+                className={`p-3.5 rounded-2xl text-xs flex items-start gap-2.5 ${
                   data.data.isServiceable
                     ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400'
+                    : 'bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400'
                 }`}
               >
                 {data.data.isServiceable ? <Check size={16} className="shrink-0 mt-0.5" /> : <AlertCircle size={16} className="shrink-0 mt-0.5" />}

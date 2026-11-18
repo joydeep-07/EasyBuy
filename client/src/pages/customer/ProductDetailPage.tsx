@@ -350,16 +350,16 @@ export const ProductDetailPage: React.FC = () => {
             <p className="text-[11px] text-[var(--text-secondary)]">Inclusive of all taxes</p>
           </div>
 
-          {/* Dynamic Variant Selectors */}
+          {/* Dynamic Variant Selectors - Apple Pill Styling */}
           {product.hasVariants && variantAttributeKeys.length > 0 && (
-            <div className="space-y-4 pt-2 border-t theme-border">
+            <div className="space-y-4 pt-3 border-t border-[var(--border-light)]">
               {variantAttributeKeys.map((key) => {
                 const options = attributeOptions[key] || [];
                 return (
                   <div key={key} className="space-y-2">
                     <div className="flex justify-between text-xs">
-                      <span className="font-bold text-[var(--text-main)]">
-                        {key}: <span className="font-normal">{selectedAttributes[key] || 'Select'}</span>
+                      <span className="font-semibold text-[var(--text-main)]">
+                        {key}: <span className="font-normal text-[var(--text-secondary)]">{selectedAttributes[key] || 'Select'}</span>
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -369,10 +369,10 @@ export const ProductDetailPage: React.FC = () => {
                           <button
                             key={opt}
                             onClick={() => handleAttributeSelect(key, opt)}
-                            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                            className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-all ${
                               isSelected
-                                ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white shadow-sm'
-                                : 'theme-border theme-card hover:border-[var(--accent-primary)] text-[var(--text-main)]'
+                                ? 'border-[var(--accent-primary)] bg-[var(--accent-surface)] text-[var(--accent-primary)]'
+                                : 'border-[var(--border-light)] bg-[var(--bg-secondary)] hover:border-[var(--text-secondary)]/40 text-[var(--text-main)]'
                             }`}
                           >
                             {opt}
@@ -390,11 +390,11 @@ export const ProductDetailPage: React.FC = () => {
                   <span>SKU: <strong className="font-mono text-[var(--text-main)]">{currentVariant.sku}</strong></span>
                   <span>•</span>
                   {activeStock <= 0 ? (
-                    <span className="text-red-500 font-bold">Sold Out in this variation</span>
+                    <span className="text-rose-500 font-medium">Sold Out in this variation</span>
                   ) : activeStock <= 5 ? (
-                    <span className="text-amber-500 font-bold">Only {activeStock} left in stock - order soon</span>
+                    <span className="text-amber-500 font-medium">Only {activeStock} left in stock</span>
                   ) : (
-                    <span className="text-emerald-500 font-bold">In Stock</span>
+                    <span className="text-emerald-500 font-medium">In Stock</span>
                   )}
                 </div>
               )}
@@ -480,49 +480,49 @@ export const ProductDetailPage: React.FC = () => {
           {/* Quantity Selector */}
           <div className="flex items-center gap-3">
             <span className="text-xs font-medium text-[var(--text-secondary)]">Quantity:</span>
-            <div className="flex items-center border theme-border rounded-xl theme-card overflow-hidden">
+            <div className="flex items-center border border-[var(--border-light)] rounded-full bg-[var(--bg-secondary)] overflow-hidden">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="p-1.5 px-2 hover:bg-[var(--bg-secondary)] text-[var(--text-main)]"
+                className="p-1.5 px-3 hover:bg-[var(--bg-tertiary)] text-[var(--text-main)] transition-colors"
                 disabled={quantity <= 1}
               >
-                <Minus size={13} />
+                <Minus size={12} />
               </button>
-              <span className="px-3 text-xs font-bold text-[var(--text-main)]">{quantity}</span>
+              <span className="px-3 text-xs font-semibold text-[var(--text-main)]">{quantity}</span>
               <button
                 onClick={() => setQuantity((q) => Math.min(activeStock, q + 1))}
-                className="p-1.5 px-2 hover:bg-[var(--bg-secondary)] text-[var(--text-main)]"
+                className="p-1.5 px-3 hover:bg-[var(--bg-tertiary)] text-[var(--text-main)] transition-colors"
                 disabled={quantity >= activeStock}
               >
-                <Plus size={13} />
+                <Plus size={12} />
               </button>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-2 pt-2">
+          {/* Action Buttons - Apple Pill CTA */}
+          <div className="space-y-2.5 pt-2">
             <button
               onClick={() => handleAddToCart(false)}
               disabled={isAddingCart || activeStock <= 0 || (locationStatus && !locationStatus.isServiceable)}
-              className="w-full py-3 rounded-xl bg-[var(--accent-primary)] hover:opacity-90 disabled:opacity-40 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-full bg-[var(--text-main)] text-[var(--bg-main)] hover:opacity-90 active:scale-95 disabled:opacity-40 font-medium text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <ShoppingBag size={16} />
-              <span>Add to Cart</span>
+              <ShoppingBag size={15} strokeWidth={2} />
+              <span>Add to Bag</span>
             </button>
 
             <button
               onClick={() => handleAddToCart(true)}
               disabled={isAddingCart || activeStock <= 0 || (locationStatus && !locationStatus.isServiceable)}
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-full bg-[var(--accent-primary)] text-white hover:brightness-105 active:scale-95 disabled:opacity-40 font-medium text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Zap size={16} />
-              <span>Buy Now</span>
+              <Zap size={15} />
+              <span>Order with Cash on Delivery</span>
             </button>
 
             <button
               onClick={handleWishlistToggle}
-              className={`w-full py-2.5 rounded-xl border theme-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
-                isWishlisted ? 'text-red-500 bg-red-500/10' : 'hover:bg-[var(--bg-secondary)]'
+              className={`w-full py-2.5 rounded-full border border-[var(--border-light)] text-xs font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isWishlisted ? 'text-rose-500 bg-rose-500/10 border-rose-500/20' : 'hover:bg-[var(--bg-secondary)] text-[var(--text-main)]'
               }`}
             >
               <Heart size={14} className={isWishlisted ? 'fill-current' : ''} />

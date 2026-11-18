@@ -321,35 +321,35 @@ export const CheckoutPage: React.FC = () => {
           </div>
 
           {/* Step 2: Payment Method */}
-          <div className="p-6 rounded-3xl theme-surface border theme-border space-y-4 shadow-sm">
+          <div className="p-6 rounded-3xl bg-[var(--bg-main)] border border-[var(--border-light)] space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="w-6 h-6 rounded-full bg-[var(--accent-primary)] text-white text-xs font-bold flex items-center justify-center">
+                <span className="w-6 h-6 rounded-full bg-[var(--text-main)] text-[var(--bg-main)] text-xs font-semibold flex items-center justify-center">
                   2
                 </span>
-                <h2 className="text-base font-bold text-[var(--text-main)]">Payment Method</h2>
+                <h2 className="text-base font-semibold text-[var(--text-main)]">Payment Method</h2>
               </div>
-              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-[var(--accent-primary)] border border-emerald-500/20">
+              <span className="text-[11px] font-medium px-3 py-0.5 rounded-full bg-[var(--accent-surface)] text-[var(--accent-primary)]">
                 Cash on Delivery Only
               </span>
             </div>
 
             <div className="space-y-3">
               {/* Cash On Delivery option */}
-              <div className="flex items-start gap-3.5 p-4 rounded-2xl border border-[var(--accent-primary)] bg-[var(--bg-secondary)] shadow-sm">
+              <div className="flex items-start gap-4 p-4 rounded-2xl border border-[var(--accent-primary)] bg-[var(--bg-secondary)] shadow-sm">
                 <div className="mt-0.5 w-5 h-5 rounded-full bg-[var(--accent-primary)] text-white flex items-center justify-center shrink-0">
                   <Check size={12} strokeWidth={3} />
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-sm text-[var(--text-main)]">
-                    <Banknote size={18} className="text-[var(--accent-primary)]" />
+                  <div className="flex items-center gap-2 font-semibold text-sm text-[var(--text-main)]">
+                    <Banknote size={16} className="text-[var(--accent-primary)]" />
                     <span>Cash on Delivery (COD)</span>
-                    <span className="text-[10px] bg-[var(--accent-primary)] text-white px-2 py-0.5 rounded-full font-bold">
-                      Available
+                    <span className="text-[10px] bg-[var(--accent-primary)] text-white px-2 py-0.5 rounded-full font-medium">
+                      Selected
                     </span>
                   </div>
                   <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Pay with cash or UPI directly to the delivery agent upon receiving your items at your doorstep. No advance payment required.
+                    Pay with cash or UPI directly to the courier partner upon arrival at your doorstep. No advance payment required.
                   </p>
                 </div>
               </div>
@@ -359,8 +359,8 @@ export const CheckoutPage: React.FC = () => {
 
         {/* Right Column: Order Review & Total (5 cols) */}
         <div className="lg:col-span-5 space-y-4 sticky top-28">
-          <div className="p-6 rounded-3xl theme-surface border theme-border shadow-sm space-y-4">
-            <h3 className="font-bold text-base text-[var(--text-main)]">Review Items ({cart?.totalItems})</h3>
+          <div className="p-6 rounded-3xl bg-[var(--bg-main)] border border-[var(--border-light)] shadow-sm space-y-4">
+            <h3 className="font-semibold text-base text-[var(--text-main)]">Review Items ({cart?.totalItems})</h3>
 
             {/* Items mini list */}
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
@@ -369,15 +369,15 @@ export const CheckoutPage: React.FC = () => {
                   <img
                     src={item.product.thumbnail || item.product.images[0]}
                     alt={item.product.title}
-                    className="w-12 h-12 rounded-xl object-contain bg-white p-1 border shrink-0"
+                    className="w-12 h-12 rounded-xl object-contain bg-[var(--bg-secondary)] p-1.5 border border-[var(--border-light)] shrink-0"
                   />
                   <div className="flex-1 truncate">
-                    <p className="font-semibold text-[var(--text-main)] truncate">{item.product.title}</p>
+                    <p className="font-medium text-[var(--text-main)] truncate">{item.product.title}</p>
                     <p className="text-[10px] text-[var(--text-secondary)]">
                       Qty: {item.quantity} • SKU: {item.sku || 'N/A'}
                     </p>
                   </div>
-                  <span className="font-bold text-[var(--text-main)]">
+                  <span className="font-semibold text-[var(--text-main)]">
                     ₹{item.subtotal.toLocaleString('en-IN')}
                   </span>
                 </div>
@@ -385,14 +385,14 @@ export const CheckoutPage: React.FC = () => {
             </div>
 
             {/* Pricing details */}
-            <div className="pt-3 border-t theme-border space-y-2 text-xs">
+            <div className="pt-3 border-t border-[var(--border-light)] space-y-2 text-xs">
               <div className="flex justify-between text-[var(--text-secondary)]">
                 <span>Items Subtotal:</span>
                 <span>₹{(cart?.subtotal || 0).toLocaleString('en-IN')}</span>
               </div>
 
               {cart && cart.discount > 0 && (
-                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                <div className="flex justify-between text-[var(--accent-primary)] font-medium">
                   <span>Coupon Discount:</span>
                   <span>-₹{cart.discount.toLocaleString('en-IN')}</span>
                 </div>
@@ -402,16 +402,16 @@ export const CheckoutPage: React.FC = () => {
                 <span>Delivery Charge:</span>
                 <span>
                   {cart?.deliveryFee === 0 ? (
-                    <strong className="text-[var(--accent-primary)]">FREE</strong>
+                    <strong className="text-[var(--accent-primary)] font-medium">FREE</strong>
                   ) : (
                     `₹${cart?.deliveryFee}`
                   )}
                 </span>
               </div>
 
-              <div className="pt-3 border-t theme-border flex justify-between text-lg font-black text-[var(--text-main)]">
-                <span>Order Total:</span>
-                <span className="text-[var(--accent-primary)]">
+              <div className="pt-3 border-t border-[var(--border-light)] flex justify-between text-base font-semibold text-[var(--text-main)]">
+                <span>Total Amount:</span>
+                <span className="text-xl font-bold tracking-tight text-[var(--accent-primary)]">
                   ₹{(cart?.grandTotal || 0).toLocaleString('en-IN')}
                 </span>
               </div>
@@ -420,20 +420,20 @@ export const CheckoutPage: React.FC = () => {
             <button
               onClick={handlePlaceOrder}
               disabled={isPlacingOrder || !selectedAddressId}
-              className="w-full py-4 rounded-2xl bg-[var(--accent-primary)] hover:opacity-90 disabled:opacity-40 text-white font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-full bg-[var(--text-main)] text-[var(--bg-main)] hover:opacity-90 active:scale-95 disabled:opacity-40 font-medium text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isPlacingOrder ? (
-                <span>Placing Order & Reserving Stock...</span>
+                <span>Placing Order...</span>
               ) : (
                 <>
-                  <PackageCheck size={18} />
-                  <span>Place Cash on Delivery Order (₹{(cart?.grandTotal || 0).toLocaleString('en-IN')})</span>
+                  <PackageCheck size={16} />
+                  <span>Place COD Order (₹{(cart?.grandTotal || 0).toLocaleString('en-IN')})</span>
                 </>
               )}
             </button>
 
             <p className="text-[10px] text-[var(--text-secondary)] text-center leading-relaxed">
-              By placing your order, you agree to EasyBuy's Conditions of Use & Sale. Privacy Notice applies.
+              By confirming your order, you agree to EasyBuy's Terms of Sale and verified Cash on Delivery fulfillment policy.
             </p>
           </div>
         </div>

@@ -74,6 +74,41 @@ const HERO_SLIDES = [
 
 const SLIDE_DURATION = 6; // seconds
 
+const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
+  "electronics": "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=600&auto=format&fit=crop&q=80",
+  "smartphones": "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=600&auto=format&fit=crop&q=80",
+  "laptops": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80",
+  "headphones-audio": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80",
+  "fashion": "https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&auto=format&fit=crop&q=80",
+  "mens-clothing": "https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?w=600&auto=format&fit=crop&q=80",
+  "womens-clothing": "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&auto=format&fit=crop&q=80",
+  "grocery": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80",
+  "beauty": "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop&q=80",
+  "home-kitchen": "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600&auto=format&fit=crop&q=80",
+  "sports-fitness": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80",
+  "supplements-protein": "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=600&auto=format&fit=crop&q=80",
+  "footwear": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+  "accessories": "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=600&auto=format&fit=crop&q=80",
+  "books": "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&auto=format&fit=crop&q=80",
+};
+
+const getCategoryPhoto = (cat: { slug?: string; name?: string; image?: string }) => {
+  // If the DB image is set and NOT the old repeated laptop/desk image
+  if (cat.image && cat.image.trim() !== "" && !cat.image.includes("1498049794561")) {
+    return cat.image;
+  }
+  if (cat.slug && CATEGORY_FALLBACK_IMAGES[cat.slug]) {
+    return CATEGORY_FALLBACK_IMAGES[cat.slug];
+  }
+  const lowerName = (cat.name || "").toLowerCase();
+  for (const [key, url] of Object.entries(CATEGORY_FALLBACK_IMAGES)) {
+    if (lowerName.includes(key.replace("-", " ")) || key.includes(lowerName)) {
+      return url;
+    }
+  }
+  return "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=600&auto=format&fit=crop&q=80";
+};
+
 const ProductGridSkeleton = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
     {[...Array(4)].map((_, idx) => (
@@ -923,10 +958,7 @@ export const HomePage: React.FC = () => {
                         style={{ backgroundColor: "var(--bg-primary)" }}
                       >
                         <img
-                          src={
-                            cat.image ||
-                            "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400"
-                          }
+                          src={getCategoryPhoto(cat)}
                           alt={cat.name}
                           draggable={false}
                           className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"

@@ -37,7 +37,7 @@ export const CategoryProductsPage: React.FC = () => {
                 {categoryData.subcategories.map((sub) => (
                   <Link
                     key={sub._id}
-                    to={`/products?category=${slug}&subcategory=${sub.slug}`}
+                    to={`/category/${sub.slug}`}
                     className="px-3.5 py-1.5 rounded-xl border theme-border theme-surface text-xs font-semibold hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-colors shadow-sm"
                   >
                     {sub.name}
@@ -50,7 +50,7 @@ export const CategoryProductsPage: React.FC = () => {
       )}
 
       {/* Embedded Products page filtered to this category */}
-      <ProductsPage />
+      <ProductsPage categorySlug={slug} hideHeaderBanner={Boolean(categoryData?.category)} />
     </div>
   );
 };
