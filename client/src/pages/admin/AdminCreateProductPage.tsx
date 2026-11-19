@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Package,
   Layers,
@@ -8,10 +8,13 @@ import {
   Trash2,
   Check,
   Upload,
-  ArrowRight,
+  ArrowLeft,
   Sliders,
   DollarSign,
   Boxes,
+  ShieldCheck,
+  Image as ImageIcon,
+  HelpCircle,
 } from 'lucide-react';
 import {
   useGetCategoriesQuery,
@@ -48,7 +51,9 @@ export const AdminCreateProductPage: React.FC = () => {
   const [returnPolicy, setReturnPolicy] = useState('7 Days Replacement Policy');
 
   // Highlights & Specs
-  const [highlightsText, setHighlightsText] = useState('High performance engineering\nPremium durable build\nCertified warranty');
+  const [highlightsText, setHighlightsText] = useState(
+    'High performance engineering\nPremium durable build\nCertified warranty'
+  );
   const [specs, setSpecs] = useState<{ name: string; value: string }[]>([
     { name: 'Model Year', value: '2026' },
     { name: 'Country of Origin', value: 'India' },
@@ -101,83 +106,85 @@ export const AdminCreateProductPage: React.FC = () => {
     }
   }, [categoryId, refetchAttributes]);
 
-  // Handle dynamic attribute value change
-  const handleDynamicChange = (slug: string, value: any) => {
-    setDynamicAttributes((prev) => ({
-      ...prev,
-      [slug]: value,
-    }));
+  // Auto-calculate discount percentage when prices change
+  useEffect(() => {
+    if (originalPrice > 0 && basePrice > 0 && originalPrice > basePrice) {
+      const calcDiscount = Math.round(((originalPrice - basePrice) / originalPrice) * 100);
+      setDiscountPercentage(calcDiscount);
+    }
+  }, [basePrice, originalPrice]);
+
+  const handleAddImageUrl = () => {
+    if (!imageUrlInput.trim()) return;
+    try {
+      new URL(imageUrlInput.trim());
+      setImageUrls((prev) => [...prev, imageUrlInput.trim()]);
+      setImageUrlInput('');
+      toast.success('Image added to gallery');
+    } catch {
+      toast.error('Please enter a valid HTTP/HTTPS image URL');
+    }
   };
 
-  // Add Specification row
-  const addSpecRow = () => {
+  const handleRemoveImage = (index: number) => {
+    setImageUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddSpecRow = () => {
     setSpecs((prev) => [...prev, { name: '', value: '' }]);
   };
 
-  const removeSpecRow = (index: number) => {
+  const handleRemoveSpecRow = (index: number) => {
     setSpecs((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Add Image URL
-  const handleAddImageUrl = () => {
-    if (imageUrlInput.trim()) {
-      setImageUrls((prev) => [...prev, imageUrlInput.trim()]);
-      setImageUrlInput('');
-    }
+  const handleSpecChange = (index: number, field: 'name' | 'value', value: string) => {
+    setSpecs((prev) => {
+      const updated = [...prev];
+      updated[index][field] = value;
+      return updated;
+    });
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const formData = new FormData();
-    for (let i = 0; i < e.target.files.length; i++) {
-      formData.append('images', e.target.files[i]);
-    }
-    try {
-      const res = await uploadImages(formData).unwrap();
-      if (res.urls) {
-        setImageUrls((prev) => [...prev, ...res.urls]);
-        toast.success(`${res.urls.length} images uploaded!`);
-      }
-    } catch (err: any) {
-      toast.error('Upload failed. Check server file size limits.');
-    }
-  };
-
-  // Variant Matrix Generator
-  const generateVariantCombinations = () => {
-    const validInputs = variantAttributesInput.filter(
-      (va) => va.name.trim() && va.valuesString.trim()
-    );
-
-    if (validInputs.length === 0) {
-      toast.error('Please enter at least one variation attribute (e.g. Size or Colour)');
+  const handleGenerateVariants = () => {
+    if (!variantAttributesInput || variantAttributesInput.length === 0) {
+      toast.error('Add at least one attribute to generate variants');
       return;
     }
 
-    const attributeArrays = validInputs.map((va) => ({
-      name: va.name.trim(),
-      values: va.valuesString
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
-    }));
+    const attrMap: { name: string; values: string[] }[] = variantAttributesInput
+      .filter((a) => a.name.trim() && a.valuesString.trim())
+      .map((a) => ({
+        name: a.name.trim(),
+        values: a.valuesString
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
+      }));
 
-    // Cartesian product of variation values
-    let combinations: Record<string, string>[] = [{}];
+    if (attrMap.length === 0) {
+      toast.error('Provide attribute names and comma-separated options');
+      return;
+    }
 
-    attributeArrays.forEach((attr) => {
-      const nextCombos: Record<string, string>[] = [];
-      combinations.forEach((combo) => {
-        attr.values.forEach((val) => {
-          nextCombos.push({ ...combo, [attr.name]: val });
-        });
-      });
-      combinations = nextCombos;
-    });
+    const cartesian = (arr: { name: string; values: string[] }[]): Record<string, string>[] => {
+      return arr.reduce(
+        (acc, curr) => {
+          return acc.flatMap((prev) => {
+            return curr.values.map((val) => ({
+              ...prev,
+              [curr.name]: val,
+            }));
+          });
+        },
+        [{}] as Record<string, string>[]
+      );
+    };
 
-    // Transform into editable variant rows
-    const prefix = (brand || 'PROD').slice(0, 3).toUpperCase();
-    const rows: GeneratedVariantRow[] = combinations.map((attrs, idx) => {
+    const combinations = cartesian(attrMap);
+    const prefix = brand ? brand.slice(0, 3).toUpperCase() : 'SKU';
+
+    const rows: GeneratedVariantRow[] = combinations.map((attrs) => {
       const skuSuffix = Object.values(attrs)
         .map((v) => v.slice(0, 3).toUpperCase())
         .join('-');
@@ -266,428 +273,448 @@ export const AdminCreateProductPage: React.FC = () => {
   const dynamicAttrs = attributesData?.attributes || [];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-[var(--text-main)]">Add New Product</h1>
-        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-          Forms adapt dynamically based on selected Department's attribute schema
-        </p>
+    <div className="space-y-6 w-full max-w-none">
+      {/* 1. Header with Breadcrumb and Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/admin/products"
+            className="p-2 rounded-xl border theme-border hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-main)] transition-colors"
+            title="Back to Products"
+          >
+            <ArrowLeft size={16} />
+          </Link>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight">
+              Create New Product
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+              Forms adapt dynamically based on selected Department's schema.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="px-6 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-xs disabled:opacity-50 self-start sm:self-auto"
+        >
+          {isSubmitting ? 'Publishing SKU...' : 'Publish Product'}
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8 text-xs">
-        {/* Section 1: Basic Information */}
-        <div className="p-6 rounded-3xl theme-surface border theme-border shadow-sm space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
-            <Package size={16} className="text-[var(--accent-primary)]" /> Basic Details
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold mb-1">Product Title *</label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Nike Dri-FIT Men Classic Performance Athletic T-Shirt"
-                className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:ring-1 focus:ring-[var(--accent-primary)]"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold mb-1">Brand Name *</label>
-              <input
-                type="text"
-                required
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                placeholder="e.g. Nike, Apple, Optimum Nutrition"
-                className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:ring-1 focus:ring-[var(--accent-primary)]"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold mb-1">Department / Category *</label>
-              <select
-                required
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs font-semibold focus:ring-1 focus:ring-[var(--accent-primary)]"
-              >
-                <option value="">Select a Department to load dynamic fields</option>
-                {categories.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold mb-1">Slug (URL friendly key)</label>
-              <input
-                type="text"
-                required
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card font-mono text-xs"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block font-semibold mb-1">Full Product Description *</label>
-            <textarea
-              required
-              rows={4}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detailed description, fabric, specifications, benefits..."
-              className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:ring-1 focus:ring-[var(--accent-primary)]"
-            />
-          </div>
-        </div>
-
-        {/* Section 2: DYNAMIC ATTRIBUTES (CRITICAL REQUIREMENT) */}
-        <div className="p-6 rounded-3xl theme-surface border theme-border shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
-              <Layers size={16} className="text-[var(--accent-primary)]" />
-              Dynamic Department Attributes
-            </h2>
-            <span className="text-[11px] text-[var(--accent-primary)] font-semibold">
-              Auto-generated form based on category schema
-            </span>
-          </div>
-
-          {dynamicAttrs.length === 0 ? (
-            <p className="text-[11px] text-[var(--text-secondary)] italic">
-              {categoryId
-                ? 'No custom dynamic attributes defined for this category yet. You can add them under Categories & Attributes.'
-                : 'Please select a Category above to load its specific dynamic attributes.'}
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-              {dynamicAttrs.map((attr) => (
-                <div key={attr._id} className="space-y-1">
-                  <label className="block font-semibold text-[var(--text-main)]">
-                    {attr.name} {attr.isRequired && <span className="text-red-500">*</span>}
-                    {attr.unit && <span className="text-gray-400 font-normal"> ({attr.unit})</span>}
-                  </label>
-
-                  {/* Render based on attribute type */}
-                  {attr.type === 'dropdown' ? (
-                    <select
-                      value={dynamicAttributes[attr.slug] || ''}
-                      onChange={(e) => handleDynamicChange(attr.slug, e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border theme-border theme-card"
-                    >
-                      <option value="">Select {attr.name}</option>
-                      {attr.predefinedValues.map((val) => (
-                        <option key={val} value={val}>
-                          {val}
-                        </option>
-                      ))}
-                    </select>
-                  ) : attr.type === 'boolean' ? (
-                    <div className="flex items-center gap-3 pt-1">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={attr.slug}
-                          checked={dynamicAttributes[attr.slug] === true}
-                          onChange={() => handleDynamicChange(attr.slug, true)}
-                        />
-                        <span>Yes</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={attr.slug}
-                          checked={dynamicAttributes[attr.slug] === false}
-                          onChange={() => handleDynamicChange(attr.slug, false)}
-                        />
-                        <span>No</span>
-                      </label>
-                    </div>
-                  ) : (
-                    <input
-                      type={attr.type === 'number' ? 'number' : 'text'}
-                      value={dynamicAttributes[attr.slug] || ''}
-                      onChange={(e) => handleDynamicChange(attr.slug, e.target.value)}
-                      placeholder={`Enter ${attr.name}`}
-                      className="w-full px-3 py-2 rounded-xl border theme-border theme-card"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Section 3: Pricing & Inventory */}
-        <div className="p-6 rounded-3xl theme-surface border theme-border shadow-sm space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
-            <DollarSign size={16} className="text-[var(--accent-primary)]" /> Pricing & Inventory
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div>
-              <label className="block font-semibold mb-1">Base Price (₹) *</label>
-              <input
-                type="number"
-                required
-                min={0}
-                value={basePrice}
-                onChange={(e) => setBasePrice(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card font-bold"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Original Price (₹)</label>
-              <input
-                type="number"
-                min={0}
-                value={originalPrice}
-                onChange={(e) => setOriginalPrice(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Discount %</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={discountPercentage}
-                onChange={(e) => setDiscountPercentage(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Default Stock</label>
-              <input
-                type="number"
-                min={0}
-                value={initialStock}
-                onChange={(e) => setInitialStock(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Section 4: Product Variations Generator (CRITICAL REQUIREMENT) */}
-        <div className="p-6 rounded-3xl theme-surface border theme-border shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
+      <form onSubmit={handleSubmit} className="space-y-6 text-xs">
+        {/* Two-Column Grid: Main Details (Left 8 cols), Media & Quick Summary (Right 4 cols) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT COLUMN: Core Details, Pricing, Attributes, Specs (8 cols) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Section 1: Basic Information */}
+            <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
-                <Boxes size={16} className="text-[var(--accent-primary)]" />
-                Product Variations & SKU Combinations
+                <Package size={16} className="text-[var(--accent-primary)]" />
+                <span>Basic SKU Details</span>
               </h2>
-              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                Generate combination matrix (e.g. Nike T-Shirt with Colors and Sizes) with individual SKUs and stock.
-              </p>
-            </div>
-            <label className="flex items-center gap-2 font-bold cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hasVariants}
-                onChange={(e) => setHasVariants(e.target.checked)}
-                className="rounded text-[var(--accent-primary)]"
-              />
-              <span>Enable Variants</span>
-            </label>
-          </div>
 
-          {hasVariants && (
-            <div className="space-y-4 pt-3 border-t theme-border">
-              {/* Define Variant Attributes */}
               <div className="space-y-3">
-                <span className="font-semibold text-xs">Variation Attributes & Values (Comma Separated):</span>
-                {variantAttributesInput.map((va, idx) => (
-                  <div key={idx} className="flex gap-3 items-center">
-                    <input
-                      type="text"
-                      placeholder="e.g. Colour"
-                      value={va.name}
-                      onChange={(e) => {
-                        const copy = [...variantAttributesInput];
-                        copy[idx].name = e.target.value;
-                        setVariantAttributesInput(copy);
-                      }}
-                      className="w-40 px-3 py-2 rounded-xl border theme-border theme-card font-semibold"
-                    />
-                    <input
-                      type="text"
-                      placeholder="e.g. Black, White, Navy Blue"
-                      value={va.valuesString}
-                      onChange={(e) => {
-                        const copy = [...variantAttributesInput];
-                        copy[idx].valuesString = e.target.value;
-                        setVariantAttributesInput(copy);
-                      }}
-                      className="flex-1 px-3 py-2 rounded-xl border theme-border theme-card"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setVariantAttributesInput(variantAttributesInput.filter((_, i) => i !== idx))}
-                      className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Product Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Nike Dri-FIT Men Classic Performance Athletic T-Shirt"
+                    className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40 transition-all"
+                  />
+                </div>
 
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setVariantAttributesInput([...variantAttributesInput, { name: '', valuesString: '' }])}
-                    className="px-3.5 py-1.5 rounded-xl border theme-border hover:bg-[var(--bg-secondary)] font-semibold flex items-center gap-1.5"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                      Brand *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                      placeholder="e.g. Nike, Apple, Samsung"
+                      className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                      Slug Key (URL)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card font-mono text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Department / Primary Category *
+                  </label>
+                  <select
+                    required
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40"
                   >
-                    <Plus size={14} /> Add Another Attribute
-                  </button>
-                  <button
-                    type="button"
-                    onClick={generateVariantCombinations}
-                    className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 flex items-center gap-1.5"
-                  >
-                    <Sparkles size={14} /> Generate Combination Matrix
-                  </button>
+                    <option value="">Select a Department to load dynamic fields</option>
+                    {categories.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Marketing Description
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Provide a comprehensive product description, materials, and care guide..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40 transition-all"
+                  />
                 </div>
               </div>
+            </div>
 
-              {/* Generated Variants Table */}
-              {generatedVariants.length > 0 && (
-                <div className="pt-4 border-t theme-border space-y-2">
-                  <h3 className="font-bold text-xs text-[var(--text-main)]">
-                    Generated Combinations ({generatedVariants.length} Variants)
-                  </h3>
-                  <div className="overflow-x-auto rounded-2xl border theme-border">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-[var(--bg-secondary)] border-b theme-border text-[var(--text-secondary)]">
-                        <tr>
-                          <th className="p-3">SKU</th>
-                          <th className="p-3">Attributes</th>
-                          <th className="p-3">Price (₹)</th>
-                          <th className="p-3">Stock</th>
-                          <th className="p-3">Available?</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y theme-border">
-                        {generatedVariants.map((row, i) => (
-                          <tr key={i} className="hover:bg-[var(--bg-secondary)]">
-                            <td className="p-3">
-                              <input
-                                type="text"
-                                value={row.sku}
-                                onChange={(e) => handleVariantRowChange(i, 'sku', e.target.value)}
-                                className="px-2 py-1 rounded border theme-border theme-card font-mono text-[11px]"
-                              />
-                            </td>
-                            <td className="p-3 font-semibold text-[var(--text-main)]">
-                              {Object.entries(row.attributes).map(([k, v]) => `${k}: ${v}`).join(' | ')}
-                            </td>
-                            <td className="p-3">
-                              <input
-                                type="number"
-                                value={row.price}
-                                onChange={(e) => handleVariantRowChange(i, 'price', Number(e.target.value))}
-                                className="w-24 px-2 py-1 rounded border theme-border theme-card"
-                              />
-                            </td>
-                            <td className="p-3">
-                              <input
-                                type="number"
-                                value={row.stock}
-                                onChange={(e) => handleVariantRowChange(i, 'stock', Number(e.target.value))}
-                                className="w-20 px-2 py-1 rounded border theme-border theme-card"
-                              />
-                            </td>
-                            <td className="p-3">
-                              <input
-                                type="checkbox"
-                                checked={row.isAvailable}
-                                onChange={(e) => handleVariantRowChange(i, 'isAvailable', e.target.checked)}
-                                className="rounded text-[var(--accent-primary)]"
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            {/* Section 2: Pricing, Discount & Initial Stock */}
+            <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
+                <DollarSign size={16} className="text-[var(--accent-primary)]" />
+                <span>Pricing & Stock Level</span>
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Selling Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={basePrice}
+                    onChange={(e) => setBasePrice(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs font-bold text-[var(--accent-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Original MRP (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={originalPrice}
+                    onChange={(e) => setOriginalPrice(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Discount %
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={discountPercentage}
+                    onChange={(e) => setDiscountPercentage(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Inventory Units
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={initialStock}
+                    onChange={(e) => setInitialStock(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs font-semibold focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Dynamic Category Attributes */}
+            {dynamicAttrs.length > 0 && (
+              <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
+                    <Sliders size={16} className="text-[var(--accent-primary)]" />
+                    <span>Department Attributes ({dynamicAttrs.length})</span>
+                  </h2>
+                  <span className="text-[11px] text-[var(--text-secondary)]">Auto-generated schema</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {dynamicAttrs.map((attr) => (
+                    <div key={attr._id} className="space-y-1">
+                      <label className="block font-semibold text-[var(--text-main)]">
+                        {attr.name} {attr.isRequired && <span className="text-red-500">*</span>}
+                        {attr.unit && <span className="text-gray-400 font-normal ml-1">({attr.unit})</span>}
+                      </label>
+
+                      {attr.type === 'dropdown' ? (
+                        <select
+                          value={dynamicAttributes[attr.slug] || ''}
+                          onChange={(e) =>
+                            setDynamicAttributes({ ...dynamicAttributes, [attr.slug]: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:outline-none"
+                        >
+                          <option value="">Select {attr.name}</option>
+                          {attr.predefinedValues?.map((pv) => (
+                            <option key={pv} value={pv}>
+                              {pv}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={attr.type === 'number' ? 'number' : 'text'}
+                          value={dynamicAttributes[attr.slug] || ''}
+                          onChange={(e) =>
+                            setDynamicAttributes({ ...dynamicAttributes, [attr.slug]: e.target.value })
+                          }
+                          placeholder={`Enter ${attr.name}`}
+                          className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:outline-none"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Section 4: Specifications & Highlights */}
+            <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
+                <Sparkles size={16} className="text-amber-500" />
+                <span>Highlights & Technical Specs</span>
+              </h2>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Bullet Highlights (One per line)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={highlightsText}
+                    onChange={(e) => setHighlightsText(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border theme-border theme-card text-xs focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="font-semibold text-[var(--text-main)]">
+                      Specification Pairs
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddSpecRow}
+                      className="text-xs text-[var(--accent-primary)] font-semibold hover:underline inline-flex items-center gap-1"
+                    >
+                      <Plus size={13} />
+                      <span>Add Row</span>
+                    </button>
                   </div>
+
+                  <div className="space-y-2">
+                    {specs.map((sp, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Spec Name (e.g. Battery)"
+                          value={sp.name}
+                          onChange={(e) => handleSpecChange(idx, 'name', e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl border theme-border theme-card text-xs"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Value (e.g. 5000 mAh)"
+                          value={sp.value}
+                          onChange={(e) => handleSpecChange(idx, 'value', e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl border theme-border theme-card text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSpecRow(idx)}
+                          className="p-2 rounded-xl hover:bg-red-500/10 text-red-500 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Media Gallery, Variations & Live Card (4 cols) */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* Media Gallery */}
+            <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
+                <ImageIcon size={16} className="text-[var(--accent-primary)]" />
+                <span>Product Media ({imageUrls.length})</span>
+              </h2>
+
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    className="flex-1 px-3 py-2 rounded-xl border theme-border theme-card text-xs focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddImageUrl}
+                    className="px-3.5 py-2 rounded-xl bg-[var(--accent-primary)] text-white font-semibold text-xs hover:opacity-90 transition-opacity"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {/* Preview Grid */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {imageUrls.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className="relative rounded-2xl border theme-border p-1 bg-white overflow-hidden group shadow-2xs aspect-square flex items-center justify-center"
+                    >
+                      <img
+                        src={url}
+                        alt="Product preview"
+                        className="w-full h-full object-contain rounded-xl"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=160&auto=format&fit=crop&q=80';
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove image"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      {idx === 0 && (
+                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-md bg-[var(--accent-primary)] text-white text-[9px] font-bold">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Variation Setup */}
+            <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
+                  <Boxes size={16} className="text-purple-500" />
+                  <span>Variant Matrix</span>
+                </h2>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hasVariants}
+                    onChange={(e) => setHasVariants(e.target.checked)}
+                    className="rounded accent-[var(--accent-primary)]"
+                  />
+                  <span className="font-semibold text-xs">Enable Multi-Variant</span>
+                </label>
+              </div>
+
+              {hasVariants && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-[11px] text-[var(--text-secondary)]">
+                    Specify options separated by commas (e.g. Black, White) and click Generate.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleGenerateVariants}
+                    className="w-full py-2.5 rounded-xl border theme-border hover:bg-[var(--bg-secondary)] font-semibold text-xs transition-colors"
+                  >
+                    Generate Combinations Matrix
+                  </button>
+
+                  {generatedVariants.length > 0 && (
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold text-center">
+                      ✓ {generatedVariants.length} variation combinations active
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Section 5: Images & Media */}
-        <div className="p-6 rounded-3xl theme-surface border theme-border shadow-sm space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
-            <Upload size={16} className="text-[var(--accent-primary)]" /> Images & Gallery
-          </h2>
+            {/* Policy & Warranty */}
+            <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-3">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
+                <ShieldCheck size={16} className="text-emerald-500" />
+                <span>Warranty & Policy</span>
+              </h2>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={imageUrlInput}
-              onChange={(e) => setImageUrlInput(e.target.value)}
-              placeholder="Paste Image URL..."
-              className="flex-1 px-3 py-2 rounded-xl border theme-border theme-card"
-            />
-            <button
-              type="button"
-              onClick={handleAddImageUrl}
-              className="px-4 py-2 rounded-xl bg-[var(--bg-secondary)] border theme-border font-bold hover:bg-gray-200"
-            >
-              Add URL
-            </button>
-            <label className="px-4 py-2 rounded-xl bg-[var(--accent-primary)] text-white font-bold cursor-pointer hover:opacity-90 flex items-center gap-1.5">
-              <Upload size={14} />
-              <span>{isUploading ? 'Uploading...' : 'Upload Files'}</span>
-              <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
-            </label>
-          </div>
-
-          <div className="flex flex-wrap gap-3 pt-2">
-            {imageUrls.map((img, i) => (
-              <div key={i} className="relative w-20 h-20 rounded-2xl border theme-border overflow-hidden bg-white p-1">
-                <img src={img} alt="preview" className="w-full h-full object-contain" />
-                <button
-                  type="button"
-                  onClick={() => setImageUrls(imageUrls.filter((_, idx) => idx !== i))}
-                  className="absolute top-1 right-1 p-0.5 rounded-full bg-red-600 text-white"
-                >
-                  <Trash2 size={12} />
-                </button>
+              <div className="space-y-2">
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Warranty Terms
+                  </label>
+                  <input
+                    type="text"
+                    value={warranty}
+                    onChange={(e) => setWarranty(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border theme-border theme-card text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-main)]">
+                    Return Policy
+                  </label>
+                  <input
+                    type="text"
+                    value={returnPolicy}
+                    onChange={(e) => setReturnPolicy(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border theme-border theme-card text-xs"
+                  />
+                </div>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => navigate('/admin/products')}
-            className="px-6 py-3 rounded-2xl border theme-border hover:bg-[var(--bg-secondary)] font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-8 py-3.5 rounded-2xl bg-[var(--accent-primary)] hover:opacity-90 disabled:opacity-50 text-white font-bold shadow-lg"
-          >
-            {isSubmitting ? 'Creating Product...' : 'Publish Product to Store'}
-          </button>
         </div>
       </form>
     </div>
   );
 };
+
+export default AdminCreateProductPage;
