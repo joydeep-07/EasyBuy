@@ -64,7 +64,8 @@ export const Footer: React.FC = () => {
           <h4 className="font-semibold text-xs text-[var(--text-main)] mb-3 tracking-tight">Account & Orders</h4>
           <ul className="space-y-2.5 text-[var(--text-secondary)]">
             <li><Link to="/account" className="hover:text-[var(--text-main)] transition-colors">Manage Your Profile</Link></li>
-            <li><Link to="/orders" className="hover:text-[var(--text-main)] transition-colors">Order History & Tracking</Link></li>
+            <li><Link to="/orders" className="hover:text-[var(--text-main)] transition-colors">Order History</Link></li>
+            <li><Link to="/track-order" className="hover:text-[var(--text-main)] transition-colors">Track an Order</Link></li>
             <li><Link to="/wishlist" className="hover:text-[var(--text-main)] transition-colors">Saved Wishlist</Link></li>
             <li><Link to="/cart" className="hover:text-[var(--text-main)] transition-colors">Shopping Bag</Link></li>
           </ul>

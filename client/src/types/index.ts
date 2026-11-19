@@ -181,6 +181,7 @@ export interface OrderItem {
 export interface Order {
   _id: string;
   orderNumber: string;
+  trackingId?: string;
   user: string | User;
   items: OrderItem[];
   addressSnapshot: {

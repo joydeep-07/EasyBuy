@@ -179,7 +179,7 @@ export const Navbar: React.FC = () => {
 
             <div className="hidden md:flex items-center gap-6 text-[12px]">
               <Link
-                to="/track-order/EB-202611-1001"
+                to="/track-order"
                 className="hover:text-[var(--text-main)] transition-colors flex items-center gap-1.5"
               >
                 <Package className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
@@ -486,7 +486,7 @@ export const Navbar: React.FC = () => {
                 <Sparkles className="w-4 h-4" /> Best Sellers
               </Link>
               <Link
-                to="/track-order/EB-202611-1001"
+                to="/track-order"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-secondary)]"
               >

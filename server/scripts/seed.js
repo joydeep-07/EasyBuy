@@ -1531,6 +1531,7 @@ const seedDatabase = async () => {
     console.log('[Seed]: Creating Sample Orders & Shipments...');
     const order1 = await Order.create({
       orderNumber: 'EB-202611-1001',
+      trackingId: 'BD-847291039',
       user: customer1._id,
       items: [
         {
@@ -1618,6 +1619,7 @@ const seedDatabase = async () => {
     // Order 2: In-Transit Order
     const order2 = await Order.create({
       orderNumber: 'EB-202611-1002',
+      trackingId: 'DEL-928174102',
       user: customer1._id,
       items: [
         {

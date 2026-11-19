@@ -543,10 +543,7 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full space-y-14 overflow-x-hidden"
-    >
+    <div ref={containerRef} className="w-full space-y-14 overflow-x-hidden">
       {/* 1. ATTACHED CONTINUOUS SLIDING HERO SHOWCASE */}
       <section className="relative w-full h-[460px] sm:h-[540px] lg:h-[620px] overflow-hidden bg-zinc-950">
         {/* Attached Horizontal Track */}
@@ -658,7 +655,6 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
-
       {/* 2. MINIMAL TRUST & PRIVILEGE BAR */}
       <section className="max-w-[1600px] mx-auto px-4 sm:px-8 -mt-6">
         <div className="trust-bar grid grid-cols-1 md:grid-cols-3 gap-4 p-4 sm:p-5 rounded-2xl bg-[var(--bg-primary)] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
@@ -705,7 +701,6 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
-
       {/* 3. INTERACTIVE CLICK-TO-COPY COUPON TICKET */}
       {featuredCoupon && (
         <section className="coupon-banner max-w-[1600px] mx-auto px-4 sm:px-8">
@@ -813,7 +808,6 @@ export const HomePage: React.FC = () => {
           </div>
         </section>
       )}
-
       {/* 4. CURATED DEPARTMENTS (SINGLE-LINE DRAGGABLE CIRCULAR SLIDER) */}
       <section className="max-w-[1600px] mx-auto px-4 sm:px-8">
         {/* Header + Circular Navigation Arrows */}
@@ -981,7 +975,6 @@ export const HomePage: React.FC = () => {
           </div>
         )}
       </section>
-
       {/* 5. BEST SELLERS SHOWCASE */}
       <section className="max-w-[1600px] mx-auto px-4 sm:px-8">
         <div className="flex items-end justify-between mb-6">
@@ -1019,7 +1012,6 @@ export const HomePage: React.FC = () => {
           </div>
         )}
       </section>
-
       {/* 6. TRENDING DEALS & DROPS */}
       <section className="max-w-[1600px] mx-auto px-4 sm:px-8">
         <div className="flex items-end justify-between mb-6">
@@ -1057,7 +1049,6 @@ export const HomePage: React.FC = () => {
           </div>
         )}
       </section>
-
       {/* 7. PERSONALIZED RECOMMENDATIONS */}
       {recommendationsData?.recommendations &&
         recommendationsData.recommendations.length > 0 && (
@@ -1098,49 +1089,93 @@ export const HomePage: React.FC = () => {
             </div>
           </section>
         )}
+      
+      {/* 8. NEWSLETTER SECTION */}
+      <section className="newsletter-box max-w-[1600px] mx-auto px-4 sm:px-8 py-8">
+        <div
+          className="relative overflow-hidden rounded-3xl px-6 py-12 sm:px-12 sm:py-16 border"
+          style={{
+            background: "var(--bg-secondary)",
+            borderColor: "var(--border-subtle)",
+          }}
+        >
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10">
+            {/* Newsletter Content */}
+            <div className="max-w-xl text-center lg:text-left space-y-4">
+              <div
+                className="inline-flex items-center gap-2 text-xs font-semibold tracking-wider"
+                style={{ color: "var(--accent-primary)" }}
+              >
+                <Mail className="w-4 h-4" />
+                <span>MEMBER EXCLUSIVE</span>
+              </div>
 
-      {/* 8. PRIVATE CLUB NEWSLETTER SPOTLIGHT */}
-      <section className="newsletter-box max-w-[1600px] mx-auto px-4 sm:px-8">
-        <div className="relative overflow-hidden rounded-[2rem] bg-zinc-950 border border-white/10 p-8 sm:p-14 text-white">
-          <div className="pointer-events-none absolute -top-24 right-10 w-96 h-96 rounded-full bg-emerald-500/20 blur-[120px]" />
-          <div className="pointer-events-none absolute -bottom-24 left-10 w-72 h-72 rounded-full bg-teal-500/15 blur-[100px]" />
-
-          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div className="max-w-xl space-y-3 text-center lg:text-left">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-[10px] font-bold uppercase tracking-widest text-emerald-400">
-                <Mail className="w-3 h-3" /> Private Access
-              </span>
-              <h3 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-                First access to drops, private sales & member codes.
+              <h3
+                className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-[1.1]"
+                style={{ color: "var(--text-main)" }}
+              >
+                Something good is
+                <br className="hidden sm:block" />
+                <span style={{ color: "var(--text-secondary)" }}>
+                  coming to your inbox.
+                </span>
               </h3>
-              <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                Join 50,000+ members receiving curated weekly releases and
-                secret checkout vouchers. Zero spam, unsubscribe anytime.
+
+              <p
+                className="text-sm sm:text-base leading-relaxed max-w-md mx-auto lg:mx-0"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Get early access to exclusive drops, special offers, and
+                carefully curated collections. No clutter, just the good stuff.
               </p>
             </div>
 
+            {/* Newsletter Form */}
             <form
               onSubmit={handleNewsletterSubmit}
-              className="flex flex-col sm:flex-row w-full lg:w-auto max-w-md gap-2.5"
+              className="w-full lg:max-w-md space-y-3"
             >
-              <input
-                type="email"
-                required
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                placeholder="you@domain.com"
-                className="flex-1 sm:w-72 px-5 py-3.5 rounded-full bg-white/[0.08] border border-white/15 text-white placeholder-zinc-400 text-xs sm:text-sm focus:outline-none focus:border-emerald-400 transition-colors"
-              />
-              <button
-                type="submit"
-                className="px-7 py-3.5 rounded-full bg-white text-zinc-950 hover:bg-emerald-400 font-bold text-xs sm:text-sm shrink-0 transition-colors cursor-pointer"
+              <div
+                className="flex flex-col sm:flex-row gap-2 p-1.5 rounded-2xl border transition-all duration-200"
+                style={{
+                  background: "var(--bg-main)",
+                  borderColor: "var(--border-light)",
+                  boxShadow: "var(--shadow-subtle)",
+                }}
               >
-                Join Club
-              </button>
+                <input
+                  type="email"
+                  required
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  className="flex-1 min-w-0 px-4 py-3 bg-transparent text-sm outline-none"
+                  style={{
+                    color: "var(--text-main)",
+                  }}
+                />
+
+                <button
+                  type="submit"
+                  className="apple-btn-primary px-7 py-3 text-sm cursor-pointer whitespace-nowrap"
+                >
+                  Subscribe
+                  <span className="ml-1.5">→</span>
+                </button>
+              </div>
+
+              <p
+                className="text-[11px] text-center lg:text-left"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                By subscribing, you agree to receive occasional updates.
+                Unsubscribe anytime.
+              </p>
             </form>
           </div>
         </div>
       </section>
+      
     </div>
   );
 };

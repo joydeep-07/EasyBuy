@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Download,
   XCircle,
+  Copy,
 } from 'lucide-react';
 import { useGetOrderByIdQuery, useCancelOrderMutation } from '../../redux/api/orderApi';
 import { toast } from 'sonner';
@@ -76,8 +77,8 @@ export const OrderDetailPage: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <Link
-            to={`/track-order/${order._id}`}
-            className="px-4 py-2 rounded-xl bg-[var(--accent-primary)] text-white text-xs font-bold hover:opacity-90 flex items-center gap-1.5"
+            to={`/track-order/${encodeURIComponent(order.trackingId || order.orderNumber || order._id)}`}
+            className="px-4 py-2 rounded-xl bg-[var(--accent-primary)] text-white text-xs font-bold hover:opacity-90 flex items-center gap-1.5 shadow-sm"
           >
             <Truck size={14} />
             <span>Track Delivery</span>
@@ -94,21 +95,51 @@ export const OrderDetailPage: React.FC = () => {
       </div>
 
       {/* Order Status Banner */}
-      <div className="p-5 rounded-3xl theme-surface border theme-border flex items-center justify-between">
+      <div className="p-5 rounded-3xl theme-surface border theme-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-2xl bg-emerald-500/10 text-[var(--accent-primary)]">
+          <div className="p-3 rounded-2xl bg-emerald-500/10 text-[var(--accent-primary)] shrink-0">
             <Package size={24} />
           </div>
           <div>
             <span className="text-xs text-[var(--text-secondary)] font-medium">Current Status</span>
             <h3 className="text-base font-bold text-[var(--text-main)]">{order.orderStatus}</h3>
+            {(order.trackingId || order.trackingInfo?.trackingId) && (
+              <div className="flex items-center gap-1.5 mt-0.5 text-xs">
+                <span className="text-[var(--text-secondary)]">Tracking ID:</span>
+                <span className="font-mono font-bold text-[var(--accent-primary)] bg-[var(--bg-secondary)] px-2 py-0.5 rounded border theme-border">
+                  {order.trackingId || order.trackingInfo?.trackingId}
+                </span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(order.trackingId || order.trackingInfo?.trackingId || '');
+                    toast.success('Tracking ID copied');
+                  }}
+                  className="p-1 hover:text-[var(--accent-primary)] text-[var(--text-secondary)] transition-colors"
+                  title="Copy Tracking ID"
+                >
+                  <Copy size={13} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
         {order.trackingInfo && (
-          <div className="text-right text-xs">
+          <div className="text-left sm:text-right text-xs">
             <span className="text-[var(--text-secondary)]">Courier: </span>
             <strong className="text-[var(--text-main)]">{order.trackingInfo.shippingCompany}</strong>
-            <p className="font-mono text-[var(--accent-primary)]">AWB: {order.trackingInfo.trackingId}</p>
+            {order.trackingInfo.trackingId && (
+              <p className="font-mono text-[var(--text-secondary)]">AWB: {order.trackingInfo.trackingId}</p>
+            )}
+            {order.trackingInfo.trackingUrl && (
+              <a
+                href={order.trackingInfo.trackingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] text-blue-500 hover:underline block mt-0.5"
+              >
+                Carrier Website
+              </a>
+            )}
           </div>
         )}
       </div>

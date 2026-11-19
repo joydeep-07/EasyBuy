@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Truck, ArrowRight, Clock, AlertCircle } from 'lucide-react';
+import { Package, Truck, ArrowRight, Clock, AlertCircle, Copy } from 'lucide-react';
 import { useGetMyOrdersQuery } from '../../redux/api/orderApi';
 import { useAppSelector } from '../../redux/hooks';
+import { toast } from 'sonner';
 
 export const MyOrdersPage: React.FC = () => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
@@ -93,17 +94,37 @@ export const MyOrdersPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs font-bold text-[var(--accent-primary)]">
-                    #{ord.orderNumber}
-                  </span>
-                  <Link
-                    to={`/orders/${ord._id}`}
-                    className="text-xs font-bold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
-                  >
-                    <span>View Order</span>
-                    <ArrowRight size={12} />
-                  </Link>
+                <div className="flex flex-col sm:items-end gap-1.5">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-xs font-bold text-[var(--accent-primary)]">
+                      #{ord.orderNumber}
+                    </span>
+                    <Link
+                      to={`/orders/${ord._id}`}
+                      className="text-xs font-bold text-[var(--accent-primary)] hover:underline flex items-center gap-1"
+                    >
+                      <span>View Order</span>
+                      <ArrowRight size={12} />
+                    </Link>
+                  </div>
+                  {(ord.trackingId || ord.trackingInfo?.trackingId) && (
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <span className="text-[var(--text-secondary)]">Tracking ID:</span>
+                      <span className="font-mono font-bold text-[var(--text-main)] bg-[var(--bg-secondary)] px-2 py-0.5 rounded border theme-border">
+                        {ord.trackingId || ord.trackingInfo?.trackingId}
+                      </span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(ord.trackingId || ord.trackingInfo?.trackingId || '');
+                          toast.success('Tracking ID copied');
+                        }}
+                        className="p-1 hover:text-[var(--accent-primary)] text-[var(--text-secondary)] transition-colors"
+                        title="Copy Tracking ID"
+                      >
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -148,7 +169,7 @@ export const MyOrdersPage: React.FC = () => {
 
                 <div className="flex flex-col sm:flex-row md:flex-col gap-2 w-full md:w-auto shrink-0">
                   <Link
-                    to={`/track-order/${ord._id}`}
+                    to={`/track-order/${encodeURIComponent(ord.trackingId || ord.orderNumber || ord._id)}`}
                     className="px-5 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white text-xs font-bold hover:opacity-90 text-center flex items-center justify-center gap-1.5"
                   >
                     <Truck size={14} />

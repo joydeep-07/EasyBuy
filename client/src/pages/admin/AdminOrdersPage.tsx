@@ -49,7 +49,7 @@ export const AdminOrdersPage: React.FC = () => {
     setNewStatus(ord.orderStatus);
     setNewPaymentStatus(ord.paymentStatus);
     setShippingCompany(ord.trackingInfo?.shippingCompany || 'BlueDart Express');
-    setTrackingId(ord.trackingInfo?.trackingId || '');
+    setTrackingId(ord.trackingId || ord.trackingInfo?.trackingId || '');
     setTrackingUrl(ord.trackingInfo?.trackingUrl || '');
     setAdminComment('');
   };
@@ -112,7 +112,7 @@ export const AdminOrdersPage: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by Order # or Customer..."
+            placeholder="Search by Order #, Tracking ID, or Customer..."
             className="w-full pl-9 pr-4 py-2 rounded-xl border theme-border theme-card text-xs focus:outline-none"
           />
         </div>
@@ -163,7 +163,12 @@ export const AdminOrdersPage: React.FC = () => {
                 orders.map((ord) => (
                   <tr key={ord._id} className="hover:bg-[var(--bg-secondary)] transition-colors">
                     <td className="p-4 font-mono font-bold text-[var(--accent-primary)]">
-                      {ord.orderNumber}
+                      <div>#{ord.orderNumber}</div>
+                      {(ord.trackingId || ord.trackingInfo?.trackingId) && (
+                        <span className="block text-[10px] font-mono text-[var(--text-secondary)] font-normal mt-0.5">
+                          TRK: {ord.trackingId || ord.trackingInfo?.trackingId}
+                        </span>
+                      )}
                     </td>
                     <td className="p-4 font-medium text-[var(--text-main)]">
                       {typeof ord.user === 'object' && ord.user !== null

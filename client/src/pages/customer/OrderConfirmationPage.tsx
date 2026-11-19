@@ -1,7 +1,8 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle2, Package, Truck, ArrowRight, Home, Banknote, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Package, Truck, ArrowRight, Home, Banknote, ShieldCheck, Copy } from 'lucide-react';
 import { useGetOrderByIdQuery } from '../../redux/api/orderApi';
+import { toast } from 'sonner';
 
 export const OrderConfirmationPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,11 +35,29 @@ export const OrderConfirmationPage: React.FC = () => {
         </div>
 
         {order && (
-          <div className="p-5 rounded-2xl bg-[var(--bg-secondary)] border theme-border text-left text-xs space-y-2 max-w-md mx-auto">
-            <p className="font-bold text-[var(--text-main)] flex justify-between">
+          <div className="p-5 rounded-2xl bg-[var(--bg-secondary)] border theme-border text-left text-xs space-y-2.5 max-w-md mx-auto">
+            <p className="font-bold text-[var(--text-main)] flex justify-between items-center">
               <span>Order Number:</span>
-              <span className="font-mono text-[var(--accent-primary)]">{order.orderNumber}</span>
+              <span className="font-mono text-[var(--accent-primary)] font-bold">{order.orderNumber}</span>
             </p>
+            {(order.trackingId || order.trackingInfo?.trackingId) && (
+              <p className="font-bold text-[var(--text-main)] flex justify-between items-center">
+                <span>Unique Tracking ID:</span>
+                <span className="flex items-center gap-1 font-mono text-[var(--accent-primary)]">
+                  <span>{order.trackingId || order.trackingInfo?.trackingId}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(order.trackingId || order.trackingInfo?.trackingId || '');
+                      toast.success('Tracking ID copied');
+                    }}
+                    className="p-1 hover:text-[var(--text-main)] text-[var(--text-secondary)] transition-colors"
+                    title="Copy Tracking ID"
+                  >
+                    <Copy size={13} />
+                  </button>
+                </span>
+              </p>
+            )}
             <p className="text-[var(--text-secondary)] flex justify-between">
               <span>Estimated Delivery:</span>
               <strong>{new Date(order.estimatedDelivery || Date.now()).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</strong>
@@ -72,11 +91,18 @@ export const OrderConfirmationPage: React.FC = () => {
 
         <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
           <Link
-            to={`/orders/${id}`}
-            className="px-6 py-3 rounded-xl bg-[var(--accent-primary)] text-white font-bold text-xs hover:opacity-90 transition-opacity flex items-center gap-2"
+            to={`/track-order/${encodeURIComponent(order?.trackingId || order?.orderNumber || id || '')}`}
+            className="px-6 py-3 rounded-xl bg-[var(--accent-primary)] text-white font-bold text-xs hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm"
           >
             <Truck size={16} />
-            <span>Track Order & Details</span>
+            <span>Track Order & Delivery</span>
+          </Link>
+          <Link
+            to={`/orders/${id}`}
+            className="px-6 py-3 rounded-xl border theme-border theme-card font-bold text-xs hover:bg-[var(--bg-secondary)] flex items-center gap-2"
+          >
+            <Package size={16} />
+            <span>Order Details</span>
           </Link>
           <Link
             to="/products"

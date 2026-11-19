@@ -56,6 +56,13 @@ const orderSchema = new mongoose.Schema(
       uppercase: true,
       index: true,
     },
+    trackingId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      uppercase: true,
+      index: true,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

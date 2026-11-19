@@ -12,6 +12,7 @@ const router = express.Router();
 
 // Public / Customer
 router.get('/check-pincode/:pincode', checkPincode);
+router.get('/track', getOrderTracking);
 router.get('/track/:orderId', getOrderTracking);
 
 // Admin delivery zone routes

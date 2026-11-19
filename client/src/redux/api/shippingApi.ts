@@ -21,16 +21,26 @@ export const shippingApi = apiSlice.injectEndpoints({
     }),
     getOrderTracking: builder.query<{
       success: boolean;
+      orderId?: string;
       orderNumber: string;
+      trackingId?: string;
       orderStatus: string;
       estimatedDelivery: string;
       deliveredAt?: string;
       addressSnapshot: any;
       shipment: any;
       statusHistory: any[];
-      stages: { key: string; label: string; completed: boolean; current?: boolean }[];
+      items?: {
+        product?: string;
+        title: string;
+        brand?: string;
+        quantity: number;
+        unitPrice: number;
+        image?: string;
+      }[];
+      stages: { key: string; label: string; completed: boolean; current?: boolean; isError?: boolean; isWarning?: boolean }[];
     }, string>({
-      query: (orderId) => `/shipping/track/${orderId}`,
+      query: (orderId) => `/shipping/track/${encodeURIComponent(orderId)}`,
       providesTags: (result, error, id) => [{ type: 'Shipping', id }],
     }),
   }),

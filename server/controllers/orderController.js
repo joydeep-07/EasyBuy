@@ -17,6 +17,13 @@ const generateOrderNumber = () => {
   return `EB-${dateStr}-${randomStr}`;
 };
 
+// Helper to generate unique tracking ID e.g. TRK-20261119-8F2A
+const generateTrackingId = () => {
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const randomChars = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `TRK-${dateStr}-${randomChars}`;
+};
+
 // @desc    Place a new customer order (Cash on Delivery)
 // @route   POST /api/orders
 export const createOrder = async (req, res, next) => {
@@ -147,12 +154,14 @@ export const createOrder = async (req, res, next) => {
 
     const totalAmount = Math.max(0, subtotal - discount + deliveryCharge);
     const orderNumber = generateOrderNumber();
+    const trackingId = generateTrackingId();
 
     const estimatedDelivery = new Date();
     estimatedDelivery.setDate(estimatedDelivery.getDate() + 4);
 
     const order = await Order.create({
       orderNumber,
+      trackingId,
       user: req.user._id,
       items: orderItems,
       addressSnapshot: {
@@ -180,6 +189,11 @@ export const createOrder = async (req, res, next) => {
       totalAmount,
       appliedCoupon: appliedCouponData,
       orderStatus: 'Confirmed',
+      trackingInfo: {
+        shippingCompany: 'EasyBuy Logistics',
+        trackingId: trackingId,
+        trackingUrl: '',
+      },
       statusHistory: [
         {
           status: 'Confirmed',
@@ -190,6 +204,32 @@ export const createOrder = async (req, res, next) => {
       ],
       estimatedDelivery,
     });
+
+    // Auto-create initial shipment record with tracking ID
+    try {
+      const shipment = await Shipment.create({
+        order: order._id,
+        orderNumber: order.orderNumber,
+        shippingCompany: 'EasyBuy Logistics',
+        trackingId: trackingId,
+        trackingUrl: '',
+        status: 'LABEL_CREATED',
+        estimatedDelivery,
+        deliveryNotes: 'Standard Ground Delivery',
+        statusUpdates: [
+          {
+            status: 'LABEL_CREATED',
+            location: 'Warehouse Hub',
+            notes: 'Order confirmed and shipment tracking generated',
+            timestamp: new Date(),
+          },
+        ],
+      });
+      order.shipment = shipment._id;
+      await order.save();
+    } catch (shipErr) {
+      console.error('Shipment auto-create notice:', shipErr.message);
+    }
 
     // Clear user cart
     cart.items = [];
@@ -235,7 +275,23 @@ export const createOrder = async (req, res, next) => {
 // @route   GET /api/orders/my-orders
 export const getMyOrders = async (req, res, next) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const orders = await Order.find({ user: req.user._id }).populate('shipment').sort({ createdAt: -1 });
+
+    // Ensure all customer orders have a unique trackingId populated
+    for (const ord of orders) {
+      if (!ord.trackingId) {
+        ord.trackingId = ord.trackingInfo?.trackingId || ord.shipment?.trackingId || generateTrackingId();
+        if (!ord.trackingInfo?.trackingId) {
+          ord.trackingInfo = {
+            shippingCompany: ord.shipment?.shippingCompany || 'EasyBuy Logistics',
+            trackingId: ord.trackingId,
+            trackingUrl: ord.shipment?.trackingUrl || '',
+          };
+        }
+        await ord.save().catch(() => {});
+      }
+    }
+
     res.status(200).json({
       success: true,
       count: orders.length,
@@ -257,6 +313,18 @@ export const getOrderById = async (req, res, next) => {
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (!order.trackingId) {
+      order.trackingId = order.trackingInfo?.trackingId || order.shipment?.trackingId || generateTrackingId();
+      if (!order.trackingInfo?.trackingId) {
+        order.trackingInfo = {
+          shippingCompany: order.shipment?.shippingCompany || 'EasyBuy Logistics',
+          trackingId: order.trackingId,
+          trackingUrl: order.shipment?.trackingUrl || '',
+        };
+      }
+      await order.save().catch(() => {});
     }
 
     res.status(200).json({
@@ -343,10 +411,13 @@ export const adminGetAllOrders = async (req, res, next) => {
     }
 
     if (search) {
+      const searchRegex = new RegExp(search.trim(), 'i');
       query.$or = [
-        { orderNumber: new RegExp(search.trim(), 'i') },
-        { 'addressSnapshot.fullName': new RegExp(search.trim(), 'i') },
-        { 'addressSnapshot.phoneNumber': new RegExp(search.trim(), 'i') },
+        { orderNumber: searchRegex },
+        { trackingId: searchRegex },
+        { 'trackingInfo.trackingId': searchRegex },
+        { 'addressSnapshot.fullName': searchRegex },
+        { 'addressSnapshot.phoneNumber': searchRegex },
       ];
     }
 
@@ -460,6 +531,7 @@ export const adminUpdateOrderStatus = async (req, res, next) => {
         await shipment.save();
       }
 
+      order.trackingId = trackingId;
       order.trackingInfo = {
         shippingCompany,
         trackingId,
