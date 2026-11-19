@@ -13,6 +13,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { useGetOrderByIdQuery, useCancelOrderMutation } from '../../redux/api/orderApi';
+import { SelectedVariantSummary } from '../../components/common/variants/SelectedVariantSummary';
 import { toast } from 'sonner';
 
 export const OrderDetailPage: React.FC = () => {
@@ -226,6 +227,11 @@ export const OrderDetailPage: React.FC = () => {
                 />
                 <div>
                   <h4 className="font-bold text-[var(--text-main)]">{item.title}</h4>
+                  <SelectedVariantSummary
+                    variantTitle={item.variantTitle}
+                    selectedAttributes={item.selectedAttributes}
+                    className="my-1"
+                  />
                   <p className="text-[var(--text-secondary)]">
                     Price: ₹{item.unitPrice.toLocaleString('en-IN')} • Quantity: {item.quantity}
                   </p>

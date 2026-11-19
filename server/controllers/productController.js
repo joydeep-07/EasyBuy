@@ -166,8 +166,8 @@ export const getProductBySlug = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // Retrieve variants
-    const variants = await ProductVariant.find({ product: product._id, status: 'ACTIVE' });
+    // Retrieve variants (all non-discontinued variants so out-of-stock ones can be displayed appropriately)
+    const variants = await ProductVariant.find({ product: product._id, status: { $ne: 'DISCONTINUED' } });
 
     // Location Serviceability Check
     let locationStatus = {
@@ -327,20 +327,32 @@ export const createProduct = async (req, res, next) => {
     });
 
     // If variants provided, create them
+    let createdVariants = [];
     if (hasVariants && Array.isArray(variants) && variants.length > 0) {
       for (const v of variants) {
+        let skuCandidate = (v.sku || `${product.slug}-${Object.values(v.attributes || {}).join('-')}-${Math.random().toString(36).substring(2, 6)}`)
+          .toUpperCase()
+          .replace(/[^\w-]/g, '');
+
+        // Guarantee global SKU uniqueness
+        const existingSku = await ProductVariant.findOne({ sku: skuCandidate });
+        if (existingSku) {
+          skuCandidate = `${skuCandidate}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        }
+
         const variant = await ProductVariant.create({
           product: product._id,
-          sku: v.sku,
-          title: v.title || `${product.title} - ${v.sku}`,
+          sku: skuCandidate,
+          title: v.title || `${product.title} - ${Object.values(v.attributes || {}).join(' / ')}`,
           attributes: v.attributes || {},
-          price: v.price || product.basePrice,
-          originalPrice: v.originalPrice || product.originalPrice,
-          stock: v.stock || 0,
+          price: Number(v.price) >= 0 ? Number(v.price) : product.basePrice,
+          originalPrice: Number(v.originalPrice) >= 0 ? Number(v.originalPrice) : (product.originalPrice || product.basePrice),
+          stock: Number(v.stock) >= 0 ? Number(v.stock) : 0,
           images: v.images && v.images.length > 0 ? v.images : product.images,
           weight: v.weight || 0,
           dimensions: v.dimensions || {},
-          isAvailable: v.isAvailable !== undefined ? v.isAvailable : true,
+          isAvailable: v.isAvailable !== undefined ? v.isAvailable : (Number(v.stock) > 0),
+          status: Number(v.stock) > 0 ? 'ACTIVE' : 'OUT_OF_STOCK',
         });
 
         // Initialize Inventory record
@@ -352,6 +364,8 @@ export const createProduct = async (req, res, next) => {
           reservedStock: 0,
           lowStockThreshold: 5,
         });
+
+        createdVariants.push(variant);
       }
     } else {
       // Create base inventory record
@@ -368,13 +382,14 @@ export const createProduct = async (req, res, next) => {
       success: true,
       message: 'Product created successfully',
       product,
+      variants: createdVariants,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Admin: Update product details
+// @desc    Admin: Update product details & variants
 // @route   PUT /api/admin/products/:id
 export const updateProduct = async (req, res, next) => {
   try {
@@ -383,13 +398,117 @@ export const updateProduct = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    Object.assign(product, req.body);
+    const { variants, hasVariants, ...otherFields } = req.body;
+
+    Object.assign(product, otherFields);
+    if (hasVariants !== undefined) {
+      product.hasVariants = !!hasVariants;
+    }
     await product.save();
+
+    let updatedVariants = [];
+
+    // Sync variants if hasVariants is enabled and variants array is provided
+    if (product.hasVariants && Array.isArray(variants)) {
+      const activeVariantIds = [];
+
+      for (const v of variants) {
+        if (v._id && !v._id.startsWith('temp_')) {
+          // Update existing variant
+          const existingVariant = await ProductVariant.findById(v._id);
+          if (existingVariant) {
+            existingVariant.title = v.title || existingVariant.title;
+            existingVariant.attributes = v.attributes || existingVariant.attributes;
+            existingVariant.price = Number(v.price) >= 0 ? Number(v.price) : existingVariant.price;
+            existingVariant.originalPrice = Number(v.originalPrice) >= 0 ? Number(v.originalPrice) : existingVariant.originalPrice;
+            existingVariant.stock = Number(v.stock) >= 0 ? Number(v.stock) : 0;
+            existingVariant.isAvailable = v.isAvailable !== undefined ? v.isAvailable : (existingVariant.stock > 0);
+            existingVariant.status = existingVariant.stock > 0 ? 'ACTIVE' : 'OUT_OF_STOCK';
+            if (v.images && v.images.length > 0) existingVariant.images = v.images;
+            if (v.sku) existingVariant.sku = v.sku.toUpperCase();
+
+            await existingVariant.save();
+            activeVariantIds.push(existingVariant._id.toString());
+            updatedVariants.push(existingVariant);
+
+            // Sync Inventory record
+            await Inventory.findOneAndUpdate(
+              { variant: existingVariant._id },
+              {
+                sku: existingVariant.sku,
+                currentStock: existingVariant.stock,
+              },
+              { upsert: true }
+            );
+          }
+        } else {
+          // Create new variant
+          let skuCandidate = (v.sku || `${product.slug}-${Object.values(v.attributes || {}).join('-')}-${Math.random().toString(36).substring(2, 6)}`)
+            .toUpperCase()
+            .replace(/[^\w-]/g, '');
+
+          const existingSku = await ProductVariant.findOne({ sku: skuCandidate });
+          if (existingSku) {
+            skuCandidate = `${skuCandidate}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+          }
+
+          const newVariant = await ProductVariant.create({
+            product: product._id,
+            sku: skuCandidate,
+            title: v.title || `${product.title} - ${Object.values(v.attributes || {}).join(' / ')}`,
+            attributes: v.attributes || {},
+            price: Number(v.price) >= 0 ? Number(v.price) : product.basePrice,
+            originalPrice: Number(v.originalPrice) >= 0 ? Number(v.originalPrice) : (product.originalPrice || product.basePrice),
+            stock: Number(v.stock) >= 0 ? Number(v.stock) : 0,
+            images: v.images && v.images.length > 0 ? v.images : product.images,
+            isAvailable: v.isAvailable !== undefined ? v.isAvailable : (Number(v.stock) > 0),
+            status: Number(v.stock) > 0 ? 'ACTIVE' : 'OUT_OF_STOCK',
+          });
+
+          await Inventory.create({
+            product: product._id,
+            variant: newVariant._id,
+            sku: newVariant.sku,
+            currentStock: newVariant.stock,
+            reservedStock: 0,
+            lowStockThreshold: 5,
+          });
+
+          activeVariantIds.push(newVariant._id.toString());
+          updatedVariants.push(newVariant);
+        }
+      }
+
+      // Discontinue any variants of this product that were removed from the list
+      await ProductVariant.updateMany(
+        { product: product._id, _id: { $nin: activeVariantIds } },
+        { $set: { status: 'DISCONTINUED', isAvailable: false } }
+      );
+    } else if (!product.hasVariants) {
+      // Discontinue all existing variants
+      await ProductVariant.updateMany(
+        { product: product._id },
+        { $set: { status: 'DISCONTINUED', isAvailable: false } }
+      );
+
+      // Ensure base inventory exists
+      const baseInv = await Inventory.findOne({ product: product._id, variant: null });
+      if (!baseInv) {
+        await Inventory.create({
+          product: product._id,
+          sku: `PROD-${product._id.toString().slice(-6).toUpperCase()}`,
+          currentStock: 25,
+          reservedStock: 0,
+          lowStockThreshold: 5,
+        });
+      }
+    }
 
     res.status(200).json({
       success: true,
       message: 'Product updated successfully',
       product,
+      variants: updatedVariants,
     });
   } catch (error) {
     next(error);

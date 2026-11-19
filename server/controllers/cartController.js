@@ -19,20 +19,27 @@ const calculateCartTotals = async (cart) => {
     let stock = 10;
     let sku = `PROD-${product._id.toString().slice(-6)}`;
     let images = product.images;
+    let variantTitle = item.variantTitle || '';
 
     if (item.variant) {
       const variant = await ProductVariant.findById(item.variant);
       if (variant) {
         unitPrice = variant.price;
-        stock = variant.stock - (variant.reservedStock || 0);
+        stock = Math.max(0, variant.stock - (variant.reservedStock || 0));
         sku = variant.sku;
         if (variant.images?.length > 0) images = variant.images;
+        if (!variantTitle) variantTitle = variant.title || '';
       }
     }
 
     const itemSubtotal = unitPrice * item.quantity;
     subtotal += itemSubtotal;
     totalItems += item.quantity;
+
+    // Convert Map to plain object if needed
+    const attrs = item.selectedAttributes instanceof Map 
+      ? Object.fromEntries(item.selectedAttributes) 
+      : (item.selectedAttributes || {});
 
     validItems.push({
       _id: item._id,
@@ -46,8 +53,9 @@ const calculateCartTotals = async (cart) => {
         status: product.status,
       },
       variant: item.variant,
+      variantTitle,
       sku,
-      selectedAttributes: item.selectedAttributes,
+      selectedAttributes: attrs,
       quantity: item.quantity,
       price: unitPrice,
       subtotal: itemSubtotal,
@@ -127,16 +135,38 @@ export const addToCart = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Product is currently unavailable' });
     }
 
+    if (product.hasVariants && !variantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a product variant (size, storage, or configuration) before adding to cart',
+      });
+    }
+
     let price = product.basePrice;
     let sku = '';
+    let variantTitle = '';
+    let finalAttributes = selectedAttributes;
 
     if (variantId) {
       const variant = await ProductVariant.findById(variantId);
-      if (!variant || !variant.isAvailable) {
+      if (!variant || !variant.isAvailable || variant.status === 'DISCONTINUED') {
         return res.status(400).json({ success: false, message: 'Selected variant is not available' });
       }
+
+      const availableStock = variant.stock - (variant.reservedStock || 0);
+      if (availableStock < Number(quantity)) {
+        return res.status(400).json({
+          success: false,
+          message: `Only ${Math.max(0, availableStock)} left in stock for this variant`,
+        });
+      }
+
       price = variant.price;
       sku = variant.sku;
+      variantTitle = variant.title || '';
+      if (variant.attributes && (!finalAttributes || Object.keys(finalAttributes).length === 0)) {
+        finalAttributes = variant.attributes instanceof Map ? Object.fromEntries(variant.attributes) : variant.attributes;
+      }
     }
 
     let cart = await Cart.findOne({ user: req.user._id });
@@ -154,12 +184,15 @@ export const addToCart = async (req, res, next) => {
     if (existingIndex > -1) {
       cart.items[existingIndex].quantity += Number(quantity);
       cart.items[existingIndex].priceAtAddition = price;
+      if (variantTitle) cart.items[existingIndex].variantTitle = variantTitle;
+      if (finalAttributes) cart.items[existingIndex].selectedAttributes = finalAttributes;
     } else {
       cart.items.push({
         product: productId,
         variant: variantId || null,
+        variantTitle,
         sku,
-        selectedAttributes,
+        selectedAttributes: finalAttributes,
         quantity: Number(quantity),
         priceAtAddition: price,
       });
@@ -197,6 +230,20 @@ export const updateCartItem = async (req, res, next) => {
     const item = cart.items.id(itemId);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found in cart' });
+    }
+
+    // Verify stock availability
+    if (item.variant) {
+      const variant = await ProductVariant.findById(item.variant);
+      if (variant) {
+        const availableStock = variant.stock - (variant.reservedStock || 0);
+        if (availableStock < quantity) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot increase quantity. Only ${availableStock} available in stock.`,
+          });
+        }
+      }
     }
 
     item.quantity = Number(quantity);

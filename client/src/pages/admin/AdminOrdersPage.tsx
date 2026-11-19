@@ -27,6 +27,7 @@ import {
 import { AdminBadge, getStatusBadgeVariant } from '../../components/admin/AdminBadge';
 import { OrderDetailsModal } from '../../components/admin/OrderDetailsModal';
 import { EmptyState } from '../../components/admin/EmptyState';
+import { SelectedVariantSummary } from '../../components/common/variants/SelectedVariantSummary';
 import { toast } from 'sonner';
 import type { Order } from '../../types';
 
@@ -297,6 +298,10 @@ export const AdminOrdersPage: React.FC = () => {
                             <p className="font-medium text-[var(--text-main)] truncate text-xs">
                               {primaryItem?.title || 'EasyBuy Product'}
                             </p>
+                            <SelectedVariantSummary
+                              variantTitle={primaryItem?.variantTitle}
+                              selectedAttributes={primaryItem?.selectedAttributes}
+                            />
                             <p className="text-[10px] text-[var(--text-secondary)]">
                               Qty: {totalQty} ({ord.items?.length || 1} SKU{ord.items?.length > 1 ? 's' : ''})
                             </p>

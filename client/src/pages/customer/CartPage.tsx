@@ -21,6 +21,7 @@ import {
 } from '../../redux/api/cartApi';
 import { useGetActiveCouponsQuery } from '../../redux/api/couponApi';
 import { useAppSelector } from '../../redux/hooks';
+import { SelectedVariantSummary } from '../../components/common/variants/SelectedVariantSummary';
 import { toast } from 'sonner';
 
 export const CartPage: React.FC = () => {
@@ -191,15 +192,12 @@ export const CartPage: React.FC = () => {
                       {item.product.title}
                     </Link>
 
-                    {item.selectedAttributes && Object.keys(item.selectedAttributes).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 text-[11px] text-[var(--text-secondary)] pt-0.5">
-                        {Object.entries(item.selectedAttributes).map(([k, v]) => (
-                          <span key={k} className="bg-[var(--bg-secondary)] px-2.5 py-0.5 rounded-full border border-[var(--border-light)]">
-                            {k}: <strong>{v}</strong>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <SelectedVariantSummary
+                      variantTitle={item.variantTitle}
+                      selectedAttributes={item.selectedAttributes}
+                      sku={item.sku}
+                      className="pt-1"
+                    />
 
                     <p className="text-xs font-semibold text-[var(--text-main)] sm:hidden pt-1">
                       ₹{item.price.toLocaleString('en-IN')}

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AdminBadge, getStatusBadgeVariant } from './AdminBadge';
 import { OrderDetailsModal } from './OrderDetailsModal';
+import { SelectedVariantSummary } from '../common/variants/SelectedVariantSummary';
 import type { Order } from '../../types';
 import { toast } from 'sonner';
 
@@ -149,6 +150,10 @@ export const RecentOrders: React.FC<RecentOrdersProps> = ({ orders, onOpenStatus
                             <p className="font-medium text-[var(--text-main)] text-xs truncate">
                               {primaryItem?.title || 'EasyBuy Item'}
                             </p>
+                            <SelectedVariantSummary
+                              variantTitle={primaryItem?.variantTitle}
+                              selectedAttributes={primaryItem?.selectedAttributes}
+                            />
                             <p className="text-[11px] text-[var(--text-secondary)]">
                               Qty: <strong className="text-[var(--text-main)]">{totalQty}</strong>{' '}
                               ({ord.items?.length || 1} SKU{ord.items?.length > 1 ? 's' : ''})

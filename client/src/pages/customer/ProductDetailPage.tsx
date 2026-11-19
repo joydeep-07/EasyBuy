@@ -34,6 +34,7 @@ import {
 } from "../../redux/api/reviewApi";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { setSelectedPincode } from "../../redux/slices/addressSlice";
+import { ProductVariantSelector } from "../../components/common/variants/ProductVariantSelector";
 import type { ProductVariant } from "../../types";
 import { toast } from "sonner";
 
@@ -166,8 +167,13 @@ export const ProductDetailPage: React.FC = () => {
       return;
     }
 
+    if (product?.hasVariants && variants.length > 0 && !currentVariant) {
+      toast.error("Please select a size or configuration before adding to bag");
+      return;
+    }
+
     if (activeStock <= 0) {
-      toast.error("This item is currently out of stock");
+      toast.error("This item or selected variant is currently out of stock");
       return;
     }
 
@@ -405,63 +411,14 @@ export const ProductDetailPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Variant Selectors */}
-          {product.hasVariants && variantAttributeKeys.length > 0 && (
-            <div className="space-y-3.5 pb-4 border-b border-[var(--border-light)]/70">
-              {variantAttributeKeys.map((key) => {
-                const options = attributeOptions[key] || [];
-                return (
-                  <div key={key} className="space-y-1.5">
-                    <div className="text-xs">
-                      <span className="font-medium text-[var(--text-secondary)]">
-                        {key}:{" "}
-                      </span>
-                      <span className="font-semibold text-[var(--text-main)]">
-                        {selectedAttributes[key] || "Select"}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {options.map((opt) => {
-                        const isSelected = selectedAttributes[key] === opt;
-                        return (
-                          <button
-                            key={opt}
-                            onClick={() => handleAttributeSelect(key, opt)}
-                            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer ${
-                              isSelected
-                                ? "bg-[var(--text-main)] text-[var(--bg-main)] shadow-xs"
-                                : "bg-[var(--bg-secondary)]/80 text-[var(--text-main)] hover:bg-[var(--bg-secondary)] border border-transparent hover:border-[var(--border-light)]"
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {currentVariant && (
-                <div className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)]">
-                  <span>SKU {currentVariant.sku}</span>
-                  <span>•</span>
-                  {activeStock <= 0 ? (
-                    <span className="text-rose-500 font-medium">
-                      Unavailable
-                    </span>
-                  ) : activeStock <= 5 ? (
-                    <span className="text-amber-600 dark:text-amber-400 font-medium">
-                      Only {activeStock} left
-                    </span>
-                  ) : (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                      Ready to ship
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+          {/* Dynamic Variant Selector */}
+          {product.hasVariants && variants.length > 0 && (
+            <ProductVariantSelector
+              variants={variants}
+              selectedAttributes={selectedAttributes}
+              onSelectAttribute={handleAttributeSelect}
+              currentVariant={currentVariant}
+            />
           )}
 
           {/* Key Highlights */}

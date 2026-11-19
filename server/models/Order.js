@@ -11,6 +11,10 @@ const orderItemSchema = new mongoose.Schema({
     ref: 'ProductVariant',
     default: null,
   },
+  variantTitle: {
+    type: String,
+    default: '',
+  },
   title: {
     type: String,
     required: true,

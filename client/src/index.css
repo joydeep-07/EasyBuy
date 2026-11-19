@@ -173,3 +173,6 @@ body {
   color: var(--accent-primary);
 }
 
+button{
+  cursor: pointer;
+}

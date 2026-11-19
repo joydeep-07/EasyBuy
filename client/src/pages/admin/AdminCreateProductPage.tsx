@@ -21,17 +21,9 @@ import {
   useGetCategoryAttributesQuery,
 } from '../../redux/api/categoryApi';
 import { useCreateProductMutation, useUploadImagesMutation } from '../../redux/api/adminApi';
+import { ProductVariantManager } from '../../components/admin/variants/ProductVariantManager';
+import type { VariantItemData } from '../../components/admin/variants/VariantOptionForm';
 import { toast } from 'sonner';
-
-interface GeneratedVariantRow {
-  sku: string;
-  title: string;
-  attributes: Record<string, string>;
-  price: number;
-  stock: number;
-  isAvailable: boolean;
-  images: string[];
-}
 
 export const AdminCreateProductPage: React.FC = () => {
   const navigate = useNavigate();
@@ -70,11 +62,7 @@ export const AdminCreateProductPage: React.FC = () => {
 
   // Multiple Variations State
   const [hasVariants, setHasVariants] = useState(false);
-  const [variantAttributesInput, setVariantAttributesInput] = useState<{ name: string; valuesString: string }[]>([
-    { name: 'Colour', valuesString: 'Black, White, Navy Blue' },
-    { name: 'Size', valuesString: 'M, L, XL' },
-  ]);
-  const [generatedVariants, setGeneratedVariants] = useState<GeneratedVariantRow[]>([]);
+  const [variants, setVariants] = useState<VariantItemData[]>([]);
 
   // Queries & Mutations
   const { data: categoriesData } = useGetCategoriesQuery();
@@ -146,73 +134,6 @@ export const AdminCreateProductPage: React.FC = () => {
     });
   };
 
-  const handleGenerateVariants = () => {
-    if (!variantAttributesInput || variantAttributesInput.length === 0) {
-      toast.error('Add at least one attribute to generate variants');
-      return;
-    }
-
-    const attrMap: { name: string; values: string[] }[] = variantAttributesInput
-      .filter((a) => a.name.trim() && a.valuesString.trim())
-      .map((a) => ({
-        name: a.name.trim(),
-        values: a.valuesString
-          .split(',')
-          .map((v) => v.trim())
-          .filter(Boolean),
-      }));
-
-    if (attrMap.length === 0) {
-      toast.error('Provide attribute names and comma-separated options');
-      return;
-    }
-
-    const cartesian = (arr: { name: string; values: string[] }[]): Record<string, string>[] => {
-      return arr.reduce(
-        (acc, curr) => {
-          return acc.flatMap((prev) => {
-            return curr.values.map((val) => ({
-              ...prev,
-              [curr.name]: val,
-            }));
-          });
-        },
-        [{}] as Record<string, string>[]
-      );
-    };
-
-    const combinations = cartesian(attrMap);
-    const prefix = brand ? brand.slice(0, 3).toUpperCase() : 'SKU';
-
-    const rows: GeneratedVariantRow[] = combinations.map((attrs) => {
-      const skuSuffix = Object.values(attrs)
-        .map((v) => v.slice(0, 3).toUpperCase())
-        .join('-');
-      const sku = `${prefix}-${skuSuffix}-${Math.floor(100 + Math.random() * 900)}`;
-
-      return {
-        sku,
-        title: `${title || 'Product'} (${Object.values(attrs).join(' / ')})`,
-        attributes: attrs,
-        price: basePrice,
-        stock: 15,
-        isAvailable: true,
-        images: imageUrls,
-      };
-    });
-
-    setGeneratedVariants(rows);
-    toast.success(`Generated ${rows.length} product variation combinations!`);
-  };
-
-  const handleVariantRowChange = (index: number, field: keyof GeneratedVariantRow, value: any) => {
-    setGeneratedVariants((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -249,15 +170,16 @@ export const AdminCreateProductPage: React.FC = () => {
         returnPolicy,
       };
 
-      if (hasVariants && generatedVariants.length > 0) {
-        payload.variants = generatedVariants.map((v) => ({
+      if (hasVariants && variants.length > 0) {
+        payload.variants = variants.map((v) => ({
           sku: v.sku,
           title: v.title,
           attributes: v.attributes,
           price: Number(v.price),
+          originalPrice: Number(v.originalPrice || v.price),
           stock: Number(v.stock),
-          isAvailable: v.isAvailable,
-          images: v.images,
+          isAvailable: v.isAvailable !== undefined ? v.isAvailable : true,
+          images: imageUrls,
         }));
       }
 
@@ -574,9 +496,19 @@ export const AdminCreateProductPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Section 5: Dynamic Product Variants */}
+            <ProductVariantManager
+              hasVariants={hasVariants}
+              onHasVariantsChange={setHasVariants}
+              variants={variants}
+              onVariantsChange={setVariants}
+              productSlug={slug || 'prod'}
+              basePrice={Number(basePrice) || 0}
+            />
           </div>
 
-          {/* RIGHT COLUMN: Media Gallery, Variations & Live Card (4 cols) */}
+          {/* RIGHT COLUMN: Media Gallery & Policy (4 cols) */}
           <div className="lg:col-span-4 space-y-6">
             {/* Media Gallery */}
             <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-4">
@@ -636,46 +568,6 @@ export const AdminCreateProductPage: React.FC = () => {
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Variation Setup */}
-            <div className="p-6 rounded-3xl theme-surface border theme-border shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)] flex items-center gap-2">
-                  <Boxes size={16} className="text-purple-500" />
-                  <span>Variant Matrix</span>
-                </h2>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={hasVariants}
-                    onChange={(e) => setHasVariants(e.target.checked)}
-                    className="rounded accent-[var(--accent-primary)]"
-                  />
-                  <span className="font-semibold text-xs">Enable Multi-Variant</span>
-                </label>
-              </div>
-
-              {hasVariants && (
-                <div className="space-y-3 pt-2">
-                  <p className="text-[11px] text-[var(--text-secondary)]">
-                    Specify options separated by commas (e.g. Black, White) and click Generate.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleGenerateVariants}
-                    className="w-full py-2.5 rounded-xl border theme-border hover:bg-[var(--bg-secondary)] font-semibold text-xs transition-colors"
-                  >
-                    Generate Combinations Matrix
-                  </button>
-
-                  {generatedVariants.length > 0 && (
-                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold text-center">
-                      ✓ {generatedVariants.length} variation combinations active
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Policy & Warranty */}

@@ -17,6 +17,7 @@ import { useGetCartQuery } from '../../redux/api/cartApi';
 import { useGetAddressesQuery, useAddAddressMutation } from '../../redux/api/addressApi';
 import { useCreateOrderMutation } from '../../redux/api/orderApi';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { SelectedVariantSummary } from '../../components/common/variants/SelectedVariantSummary';
 import { toast } from 'sonner';
 
 export const CheckoutPage: React.FC = () => {
@@ -373,6 +374,11 @@ export const CheckoutPage: React.FC = () => {
                   />
                   <div className="flex-1 truncate">
                     <p className="font-medium text-[var(--text-main)] truncate">{item.product.title}</p>
+                    <SelectedVariantSummary
+                      variantTitle={item.variantTitle}
+                      selectedAttributes={item.selectedAttributes}
+                      className="my-0.5"
+                    />
                     <p className="text-[10px] text-[var(--text-secondary)]">
                       Qty: {item.quantity} • SKU: {item.sku || 'N/A'}
                     </p>

@@ -60,6 +60,8 @@ export const createOrder = async (req, res, next) => {
       let unitPrice = product.basePrice;
       let sku = `PROD-${product._id.toString().slice(-6)}`;
       let availableStock = 25;
+      let variantTitle = cartItem.variantTitle || '';
+      let variantObj = null;
 
       if (cartItem.variant) {
         const variant = await ProductVariant.findById(cartItem.variant);
@@ -69,8 +71,10 @@ export const createOrder = async (req, res, next) => {
             message: `Variant of "${product.title}" is out of stock`,
           });
         }
+        variantObj = variant;
         unitPrice = variant.price;
         sku = variant.sku;
+        if (!variantTitle) variantTitle = variant.title || '';
         availableStock = variant.stock - (variant.reservedStock || 0);
 
         if (availableStock < cartItem.quantity) {
@@ -84,6 +88,12 @@ export const createOrder = async (req, res, next) => {
         await ProductVariant.findByIdAndUpdate(variant._id, {
           $inc: { reservedStock: cartItem.quantity },
         });
+
+        // Also update Inventory record
+        await Inventory.findOneAndUpdate(
+          { variant: variant._id },
+          { $inc: { reservedStock: cartItem.quantity } }
+        );
       } else {
         // Find inventory
         const inv = await Inventory.findOne({ product: product._id, variant: null });
@@ -104,14 +114,19 @@ export const createOrder = async (req, res, next) => {
       const itemTotal = unitPrice * cartItem.quantity;
       subtotal += itemTotal;
 
+      const selectedAttrs = cartItem.selectedAttributes instanceof Map
+        ? Object.fromEntries(cartItem.selectedAttributes)
+        : (cartItem.selectedAttributes || {});
+
       orderItems.push({
         product: product._id,
         variant: cartItem.variant || null,
+        variantTitle,
         title: product.title,
         brand: product.brand,
         sku,
-        selectedAttributes: cartItem.selectedAttributes || {},
-        image: product.thumbnail || product.images[0],
+        selectedAttributes: selectedAttrs,
+        image: (variantObj?.images && variantObj.images.length > 0) ? variantObj.images[0] : (product.thumbnail || product.images[0]),
         unitPrice,
         quantity: cartItem.quantity,
         subtotal: itemTotal,

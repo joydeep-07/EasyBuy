@@ -11,6 +11,10 @@ const cartItemSchema = new mongoose.Schema({
     ref: 'ProductVariant',
     default: null,
   },
+  variantTitle: {
+    type: String,
+    default: '',
+  },
   sku: {
     type: String,
     default: '',

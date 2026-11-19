@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Package, Truck, ArrowRight, Clock, AlertCircle, Copy } from 'lucide-react';
 import { useGetMyOrdersQuery } from '../../redux/api/orderApi';
 import { useAppSelector } from '../../redux/hooks';
+import { SelectedVariantSummary } from '../../components/common/variants/SelectedVariantSummary';
 import { toast } from 'sonner';
 
 export const MyOrdersPage: React.FC = () => {
@@ -160,6 +161,10 @@ export const MyOrdersPage: React.FC = () => {
                         />
                         <div className="truncate max-w-[200px]">
                           <p className="font-semibold text-[var(--text-main)] truncate">{item.title}</p>
+                          <SelectedVariantSummary
+                            variantTitle={item.variantTitle}
+                            selectedAttributes={item.selectedAttributes}
+                          />
                           <p className="text-[10px] text-[var(--text-secondary)]">Qty: {item.quantity}</p>
                         </div>
                       </div>

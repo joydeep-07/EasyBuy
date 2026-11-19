@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { AdminBadge, getStatusBadgeVariant } from './AdminBadge';
+import { SelectedVariantSummary } from '../common/variants/SelectedVariantSummary';
 import type { Order } from '../../types';
 import { toast } from 'sonner';
 
@@ -202,6 +203,11 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                       <p className="font-semibold text-[var(--text-main)] text-xs truncate">
                         {it.title}
                       </p>
+                      <SelectedVariantSummary
+                        variantTitle={it.variantTitle}
+                        selectedAttributes={it.selectedAttributes}
+                        className="my-0.5"
+                      />
                       <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] mt-0.5">
                         {it.brand && <span>Brand: {it.brand}</span>}
                         {it.sku && <span>SKU: {it.sku}</span>}

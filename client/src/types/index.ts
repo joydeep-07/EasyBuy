@@ -144,6 +144,7 @@ export interface CartItem {
     status: string;
   };
   variant?: string;
+  variantTitle?: string;
   sku: string;
   selectedAttributes: Record<string, string>;
   quantity: number;
@@ -171,6 +172,7 @@ export interface CartData {
 export interface OrderItem {
   product: string;
   variant?: string;
+  variantTitle?: string;
   title: string;
   brand: string;
   sku: string;
