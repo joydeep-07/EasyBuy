@@ -2,18 +2,71 @@ import Category from '../models/Category.js';
 import AttributeDefinition from '../models/AttributeDefinition.js';
 import Product from '../models/Product.js';
 
-// @desc    Get all active categories with subcategories
+// @desc    Get all categories with subcategories & product counts
 // @route   GET /api/categories
 export const getCategories = async (req, res, next) => {
   try {
-    const categories = await Category.find({ isActive: true })
+    const filter = req.query.all === 'true' ? {} : { isActive: true };
+    const categories = await Category.find(filter)
       .populate('parentCategory', 'name slug')
-      .sort({ displayOrder: 1, name: 1 });
+      .sort({ displayOrder: 1, name: 1 })
+      .lean();
+
+    const categoryIds = categories.map((c) => c._id);
+
+    // Compute associated product counts for all returned categories
+    const counts = await Product.aggregate([
+      {
+        $match: {
+          $or: [
+            { category: { $in: categoryIds } },
+            { subcategory: { $in: categoryIds } },
+          ],
+          isDeleted: false,
+        },
+      },
+      {
+        $facet: {
+          byCategory: [
+            { $match: { category: { $in: categoryIds } } },
+            { $group: { _id: '$category', count: { $sum: 1 } } },
+          ],
+          bySubcategory: [
+            { $match: { subcategory: { $in: categoryIds } } },
+            { $group: { _id: '$subcategory', count: { $sum: 1 } } },
+          ],
+        },
+      },
+    ]);
+
+    const countMap = {};
+    if (counts && counts.length > 0) {
+      (counts[0].byCategory || []).forEach((item) => {
+        if (item._id) {
+          const idStr = item._id.toString();
+          countMap[idStr] = (countMap[idStr] || 0) + item.count;
+        }
+      });
+      (counts[0].bySubcategory || []).forEach((item) => {
+        if (item._id) {
+          const idStr = item._id.toString();
+          // Only add subcategory count if not already counted as main category
+          if (!countMap[idStr]) {
+            countMap[idStr] = item.count;
+          }
+        }
+      });
+    }
+
+    const categoriesWithCount = categories.map((cat) => ({
+      ...cat,
+      productCount: countMap[cat._id.toString()] || 0,
+    }));
 
     res.status(200).json({
       success: true,
-      count: categories.length,
-      categories,
+      count: categoriesWithCount.length,
+      categories: categoriesWithCount,
     });
   } catch (error) {
     next(error);
@@ -44,37 +97,57 @@ export const getCategoryBySlug = async (req, res, next) => {
 };
 
 // @desc    Admin: Create new category or subcategory
-// @route   POST /api/admin/categories
+// @route   POST /api/categories/admin
 export const createCategory = async (req, res, next) => {
   try {
-    const { name, slug, description, image, icon, parentCategory, isFeatured, displayOrder } = req.body;
+    const { name, slug, description, image, icon, parentCategory, isFeatured, isActive, displayOrder } = req.body;
 
-    const formattedSlug = (slug || name)
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Category name is required.' });
+    }
+
+    const trimmedName = name.trim();
+    const formattedSlug = (slug || trimmedName)
       .toLowerCase()
       .trim()
       .replace(/[^\w\s-]/g, '')
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '');
 
-    const exists = await Category.findOne({ slug: formattedSlug });
-    if (exists) {
-      return res.status(400).json({ success: false, message: 'Category slug already exists.' });
+    if (!formattedSlug) {
+      return res.status(400).json({ success: false, message: 'Invalid category slug generated.' });
+    }
+
+    // Check duplicate name or slug
+    const duplicate = await Category.findOne({
+      $or: [
+        { slug: formattedSlug },
+        { name: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+      ],
+    });
+
+    if (duplicate) {
+      if (duplicate.slug === formattedSlug) {
+        return res.status(400).json({ success: false, message: `Category slug "${formattedSlug}" already exists.` });
+      }
+      return res.status(400).json({ success: false, message: `Category name "${trimmedName}" already exists.` });
     }
 
     const category = await Category.create({
-      name,
+      name: trimmedName,
       slug: formattedSlug,
-      description,
-      image,
-      icon,
+      description: description ? description.trim() : '',
+      image: image ? image.trim() : '',
+      icon: icon ? icon.trim() : '',
       parentCategory: parentCategory || null,
       isFeatured: !!isFeatured,
-      displayOrder: displayOrder || 0,
+      isActive: isActive !== undefined ? !!isActive : true,
+      displayOrder: Number(displayOrder) || 0,
     });
 
     res.status(201).json({
       success: true,
-      message: 'Category created successfully',
+      message: `Category "${category.name}" created successfully`,
       category,
     });
   } catch (error) {
@@ -83,7 +156,7 @@ export const createCategory = async (req, res, next) => {
 };
 
 // @desc    Admin: Update category
-// @route   PUT /api/admin/categories/:id
+// @route   PUT /api/categories/admin/:id
 export const updateCategory = async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.id);
@@ -91,12 +164,60 @@ export const updateCategory = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Category not found' });
     }
 
-    Object.assign(category, req.body);
+    const { name, slug, description, image, icon, parentCategory, isFeatured, isActive, displayOrder } = req.body;
+
+    if (name && name.trim()) {
+      const trimmedName = name.trim();
+      const duplicateName = await Category.findOne({
+        _id: { $ne: req.params.id },
+        name: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      });
+      if (duplicateName) {
+        return res.status(400).json({ success: false, message: `Category name "${trimmedName}" is already taken.` });
+      }
+      category.name = trimmedName;
+    }
+
+    if (slug || name) {
+      const candidateSlug = slug || category.slug || name;
+      const formattedSlug = candidateSlug
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+      if (formattedSlug) {
+        const duplicateSlug = await Category.findOne({
+          _id: { $ne: req.params.id },
+          slug: formattedSlug,
+        });
+        if (duplicateSlug) {
+          return res.status(400).json({ success: false, message: `Category slug "${formattedSlug}" is already taken.` });
+        }
+        category.slug = formattedSlug;
+      }
+    }
+
+    if (description !== undefined) category.description = description ? description.trim() : '';
+    if (image !== undefined) category.image = image ? image.trim() : '';
+    if (icon !== undefined) category.icon = icon ? icon.trim() : '';
+    if (parentCategory !== undefined) {
+      // Prevent setting parent to itself
+      if (parentCategory && parentCategory.toString() === req.params.id) {
+        return res.status(400).json({ success: false, message: 'A category cannot be its own parent category.' });
+      }
+      category.parentCategory = parentCategory || null;
+    }
+    if (isFeatured !== undefined) category.isFeatured = !!isFeatured;
+    if (isActive !== undefined) category.isActive = !!isActive;
+    if (displayOrder !== undefined) category.displayOrder = Number(displayOrder) || 0;
+
     await category.save();
 
     res.status(200).json({
       success: true,
-      message: 'Category updated successfully',
+      message: `Category "${category.name}" updated successfully`,
       category,
     });
   } catch (error) {
@@ -104,28 +225,70 @@ export const updateCategory = async (req, res, next) => {
   }
 };
 
-// @desc    Admin: Delete category
-// @route   DELETE /api/admin/categories/:id
+// @desc    Admin: Delete category (with optional product reassignment)
+// @route   DELETE /api/categories/admin/:id
 export const deleteCategory = async (req, res, next) => {
   try {
+    const categoryId = req.params.id;
+    const reassignTo = req.body?.reassignTo || req.query?.reassignTo;
+
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
     const productCount = await Product.countDocuments({
-      $or: [{ category: req.params.id }, { subcategory: req.params.id }],
+      $or: [{ category: categoryId }, { subcategory: categoryId }],
       isDeleted: false,
     });
 
     if (productCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot delete category containing ${productCount} active products. Please reassign or delete products first.`,
-      });
+      if (reassignTo) {
+        if (reassignTo.toString() === categoryId.toString()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Target reassignment category cannot be the category being deleted.',
+          });
+        }
+        const targetCategory = await Category.findById(reassignTo);
+        if (!targetCategory) {
+          return res.status(404).json({
+            success: false,
+            message: 'Target category for reassignment was not found.',
+          });
+        }
+
+        // Reassign products to the target category
+        await Product.updateMany(
+          { category: categoryId, isDeleted: false },
+          { $set: { category: targetCategory._id } }
+        );
+        await Product.updateMany(
+          { subcategory: categoryId, isDeleted: false },
+          { $set: { subcategory: null } }
+        );
+      } else {
+        return res.status(400).json({
+          success: false,
+          hasProducts: true,
+          productCount,
+          message: `Cannot delete category "${category.name}". It is currently assigned to ${productCount} active product(s). Please reassign them to another category first.`,
+        });
+      }
     }
 
-    await Category.findByIdAndDelete(req.params.id);
-    await AttributeDefinition.deleteMany({ category: req.params.id });
+    // Unlink any subcategories that had this as parent
+    await Category.updateMany(
+      { parentCategory: categoryId },
+      { $set: { parentCategory: null } }
+    );
+
+    await Category.findByIdAndDelete(categoryId);
+    await AttributeDefinition.deleteMany({ category: categoryId });
 
     res.status(200).json({
       success: true,
-      message: 'Category and its attribute definitions removed.',
+      message: `Category "${category.name}" and associated attributes removed successfully.`,
     });
   } catch (error) {
     next(error);

@@ -82,7 +82,7 @@ export const adminApi = apiSlice.injectEndpoints({
     }),
 
     // Admin Categories & Attributes
-    createCategory: builder.mutation<{ success: boolean; category: Category }, any>({
+    createCategory: builder.mutation<{ success: boolean; category: Category; message?: string }, any>({
       query: (body) => ({
         url: '/categories/admin',
         method: 'POST',
@@ -90,20 +90,25 @@ export const adminApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Categories', 'Dashboard'],
     }),
-    updateCategory: builder.mutation<{ success: boolean; category: Category }, { id: string; data: any }>({
+    updateCategory: builder.mutation<{ success: boolean; category: Category; message?: string }, { id: string; data: any }>({
       query: ({ id, data }) => ({
         url: `/categories/admin/${id}`,
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: ['Categories'],
+      invalidatesTags: ['Categories', 'Products', 'Dashboard'],
     }),
-    deleteCategory: builder.mutation<{ success: boolean; message: string }, string>({
-      query: (id) => ({
-        url: `/categories/admin/${id}`,
-        method: 'DELETE',
-      }),
-      invalidatesTags: ['Categories'],
+    deleteCategory: builder.mutation<{ success: boolean; message: string; hasProducts?: boolean; productCount?: number }, { id: string; reassignTo?: string } | string>({
+      query: (arg) => {
+        const id = typeof arg === 'string' ? arg : arg.id;
+        const body = typeof arg === 'object' && arg.reassignTo ? { reassignTo: arg.reassignTo } : undefined;
+        return {
+          url: `/categories/admin/${id}`,
+          method: 'DELETE',
+          body,
+        };
+      },
+      invalidatesTags: ['Categories', 'Products', 'Dashboard'],
     }),
     addCategoryAttribute: builder.mutation<{ success: boolean; attribute: AttributeDefinition }, { categoryId: string; data: any }>({
       query: ({ categoryId, data }) => ({

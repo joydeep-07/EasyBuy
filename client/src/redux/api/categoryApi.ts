@@ -3,8 +3,11 @@ import type { Category, AttributeDefinition } from '../../types';
 
 export const categoryApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    getCategories: builder.query<{ success: boolean; categories: Category[] }, void>({
-      query: () => '/categories',
+    getCategories: builder.query<{ success: boolean; categories: Category[] }, { all?: boolean } | void>({
+      query: (params) => ({
+        url: '/categories',
+        params: params?.all ? { all: 'true' } : undefined,
+      }),
       providesTags: ['Categories'],
     }),
     getCategoryBySlug: builder.query<{

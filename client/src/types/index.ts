@@ -26,10 +26,13 @@ export interface Category {
   description?: string;
   image?: string;
   icon?: string;
-  parentCategory?: { _id: string; name: string; slug: string } | null;
+  parentCategory?: { _id: string; name: string; slug: string } | string | null;
   isFeatured?: boolean;
   isActive?: boolean;
   displayOrder?: number;
+  productCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AttributeDefinition {
