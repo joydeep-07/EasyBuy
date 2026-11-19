@@ -543,7 +543,7 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <div ref={containerRef} className="w-full space-y-14 overflow-x-hidden">
+    <div ref={containerRef} className="w-full space-y-14 overflow-x-clip">
       {/* 1. ATTACHED CONTINUOUS SLIDING HERO SHOWCASE */}
       <section className="relative w-full h-[460px] sm:h-[540px] lg:h-[620px] overflow-hidden bg-zinc-950">
         {/* Attached Horizontal Track */}
